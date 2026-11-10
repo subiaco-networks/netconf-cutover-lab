@@ -1,0 +1,31 @@
+ansible_connection: ansible.netcommon.netconf
+ansible_network_os: ansible.netcommon.default
+ansible_port: 830
+ansible_user: ansible
+ansible_password: Ansible123!        # lab only - use ansible-vault in real life
+ansible_host_key_checking: false
+ansible_netconf_look_for_keys: false
+
+isis_instance: i1
+network_instance: default
+site_router: csr1                    # the node that can see BOTH uplinks
+
+metric_normal: 10
+metric_drained: 1000                 # well above the 20 of the detour through the other agg
+
+confirm_timeout: 120                 # seconds the device waits for the confirming commit
+adjacency_wait: 60                   # seconds to wait for this link's IS-IS adjacency (< confirm_timeout)
+
+# desired state per phase: which port carries the uplink subinterface, and its IS-IS metric
+phase_state:
+  baseline: {port: old, metric: normal}    # lab reset only: back to the original ports
+  drain:    {port: old, metric: drained}
+  cut:      {port: new, metric: drained}
+  restore:  {port: new, metric: normal}
+
+ns:
+  nc:    urn:ietf:params:xml:ns:netconf:base:1.0
+  intf:  urn:nokia.com:srlinux:chassis:interfaces
+  vlan:  urn:nokia.com:srlinux:chassis:interfaces-vlans
+  ni:    urn:nokia.com:srlinux:net-inst:network-instance
+  isis:  urn:nokia.com:srlinux:isis:isis

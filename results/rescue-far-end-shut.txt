@@ -1,0 +1,29 @@
+# rescue-far-end-shut
+run at 2026-11-10 11:19:00 PST
+TOTAL: 0 lost of 62743 sent (0.0000%) across 8 flows, ping -i 0.01 each (measured 544 pps aggregate)
+a 'gap' is the time between the replies either side of the lost packets;
+packets still in flight when ping is stopped are excluded from tx and lost
+
+## steps
+  drain a                                                 rc=0    10.7s  lost=0
+  OOB: shut agg-01 ethernet-1/11 (far end)                rc=0       1s  lost=0
+  cut a                                                   rc=2    87.7s  lost=0
+
+## flows
+  10.10.1.2 -> 10.20.1.2: tx=8015 rx=8015 lost=0 longest_gap=0ms (69.5 pps over 115.3s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.3 -> 10.20.1.2: tx=8003 rx=8003 lost=0 longest_gap=0ms (69.4 pps over 115.3s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.4 -> 10.20.1.2: tx=7747 rx=7747 lost=0 longest_gap=0ms (67.2 pps over 115.3s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.5 -> 10.20.1.2: tx=7739 rx=7739 lost=0 longest_gap=0ms (67.2 pps over 115.2s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.6 -> 10.20.1.2: tx=7749 rx=7749 lost=0 longest_gap=0ms (67.3 pps over 115.2s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.7 -> 10.20.1.2: tx=7757 rx=7757 lost=0 longest_gap=0ms (67.3 pps over 115.2s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.8 -> 10.20.1.2: tx=8019 rx=8019 lost=0 longest_gap=0ms (69.6 pps over 115.2s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-a
+  10.10.1.9 -> 10.20.1.2: tx=7714 rx=7714 lost=0 longest_gap=0ms (67.0 pps over 115.1s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-b
+
+agg-01 ethernet-1/11 administratively shut out of band before the cut (simulates far end not patched / shut).
+Expected: adjacency on e1-11.100 never comes up -> rescue cancel-commit on both ends.
+state right after the shut: agg-01 e1-11: oper-state down | csr1 e1-11: oper-state down
+agg-01 e1-11 admin-state after the cut attempt (before the test re-enables it): admin-state disable
+csr1 IS-IS metrics after: set / network-instance default protocols isis instance i1 interface ethernet-1/1.100 level 2 metric 1000
+set / network-instance default protocols isis instance i1 interface ethernet-1/2.200 level 2 metric 10
+csr1 adjacencies after: [('ethernet-1/1.100', 'up'), ('ethernet-1/2.200', 'up')]
+agg-01 ethernet-1/11 re-enabled after the test.

@@ -1,0 +1,27 @@
+# kill-nopersist
+run at 2026-11-10 11:14:27 PST
+TOTAL: 0 lost of 26052 sent (0.0000%) across 8 flows, ping -i 0.01 each (measured 585 pps aggregate)
+a 'gap' is the time between the replies either side of the lost packets;
+packets still in flight when ping is stopped are excluded from tx and lost
+
+## steps
+  drain a (killed after commit)                           rc=-9    47.8s  lost=0
+
+## flows
+  10.10.1.2 -> 10.20.1.2: tx=3339 rx=3339 lost=0 longest_gap=0ms (74.8 pps over 44.6s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.3 -> 10.20.1.2: tx=3334 rx=3334 lost=0 longest_gap=0ms (74.8 pps over 44.6s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.4 -> 10.20.1.2: tx=3200 rx=3200 lost=0 longest_gap=0ms (71.8 pps over 44.6s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.5 -> 10.20.1.2: tx=3208 rx=3208 lost=0 longest_gap=0ms (72.0 pps over 44.5s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.6 -> 10.20.1.2: tx=3218 rx=3218 lost=0 longest_gap=0ms (72.3 pps over 44.5s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.7 -> 10.20.1.2: tx=3218 rx=3218 lost=0 longest_gap=0ms (72.3 pps over 44.5s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.8 -> 10.20.1.2: tx=3339 rx=3339 lost=0 longest_gap=0ms (75.1 pps over 44.5s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-a
+  10.10.1.9 -> 10.20.1.2: tx=3196 rx=3196 lost=0 longest_gap=0ms (71.9 pps over 44.4s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-b
+
+mode: nopersist  (-e persist_commit=false), confirm-timeout 60s
+change: phase=drain link=a (metric 10 -> 1000 on csr1 + agg-01); playbook SIGKILLed 1.0s after commit
+time from commit until running metric was back to 10 (polled every 0.25 s from separate NETCONF sessions):
+   csr1: 30.7s
+   agg-01: 30.8s
+ansible-connection daemons (hold the NETCONF sessions) alive after kill: no; gone at 1.2s after commit
+after rollback: {'csr1': {'running': 10, 'candidate': 1000, 'lock': 'lock refused: Error [FailedPrecondition]: Lock denied - candidate has been modified'}, 'agg-01': {'running': 10, 'candidate': 1000, 'lock': 'lock refused: Error [FailedPrecondition]: Lock denied - candidate has been modified'}}
+next run (no discard flag): rc=2 - failed, see log

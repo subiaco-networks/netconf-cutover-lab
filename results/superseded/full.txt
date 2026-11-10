@@ -1,0 +1,25 @@
+# full
+run at 2026-11-10 11:06:58 PST
+TOTAL: 0 lost of 49128 sent (0.0000%) across 8 flows, ping -i 0.01 each (measured nan pps aggregate)
+a 'gap' is the time between the replies either side of the lost packets;
+packets still in flight when ping is stopped are excluded from tx and lost
+
+## steps
+  drain a                                                 rc=0    10.5s  lost=0
+  cut a                                                   rc=0    11.1s  lost=0
+  restore a                                               rc=0    10.5s  lost=0
+  drain b                                                 rc=0    10.5s  lost=0
+  cut b                                                   rc=0    10.9s  lost=0
+  restore b                                               rc=0    10.4s  lost=0
+
+## flows
+  10.10.1.2 -> 10.20.1.2: tx=6129 rx=6129 lost=0 longest_gap=0ms (? pps over ?s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.3 -> 10.20.1.2: tx=6126 rx=6126 lost=0 longest_gap=0ms (? pps over ?s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.4 -> 10.20.1.2: tx=6144 rx=6144 lost=0 longest_gap=0ms (? pps over ?s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.5 -> 10.20.1.2: tx=6151 rx=6151 lost=0 longest_gap=0ms (? pps over ?s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.6 -> 10.20.1.2: tx=6176 rx=6176 lost=0 longest_gap=0ms (? pps over ?s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.7 -> 10.20.1.2: tx=6139 rx=6139 lost=0 longest_gap=0ms (? pps over ?s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.8 -> 10.20.1.2: tx=6124 rx=6124 lost=0 longest_gap=0ms (? pps over ?s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-a
+  10.10.1.9 -> 10.20.1.2: tx=6139 rx=6139 lost=0 longest_gap=0ms (? pps over ?s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-b
+
+final csr1 adjacencies: [('ethernet-1/11.100', '::'), ('ethernet-1/12.200', '::')]

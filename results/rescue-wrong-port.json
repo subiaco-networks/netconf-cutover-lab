@@ -1,0 +1,108 @@
+{
+ "flows": {
+  "10.10.1.2": {
+   "tx": 7841,
+   "rx": 7841,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 68.6,
+   "secs": 114.4,
+   "lost_at": []
+  },
+  "10.10.1.3": {
+   "tx": 7877,
+   "rx": 7877,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 68.9,
+   "secs": 114.4,
+   "lost_at": []
+  },
+  "10.10.1.4": {
+   "tx": 7624,
+   "rx": 7624,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 66.7,
+   "secs": 114.3,
+   "lost_at": []
+  },
+  "10.10.1.5": {
+   "tx": 7625,
+   "rx": 7625,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 66.7,
+   "secs": 114.3,
+   "lost_at": []
+  },
+  "10.10.1.6": {
+   "tx": 7599,
+   "rx": 7599,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 66.5,
+   "secs": 114.3,
+   "lost_at": []
+  },
+  "10.10.1.7": {
+   "tx": 7616,
+   "rx": 7616,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 66.7,
+   "secs": 114.2,
+   "lost_at": []
+  },
+  "10.10.1.8": {
+   "tx": 7845,
+   "rx": 7845,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 68.7,
+   "secs": 114.2,
+   "lost_at": []
+  },
+  "10.10.1.9": {
+   "tx": 7598,
+   "rx": 7598,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 66.5,
+   "secs": 114.2,
+   "lost_at": []
+  }
+ },
+ "steps": [
+  {
+   "step": "drain a",
+   "rc": 0,
+   "start": 1794337665.6348917,
+   "end": 1794337676.2813723,
+   "secs": 10.6,
+   "recap": [
+    "agg-01                     : ok=22   changed=0    unreachable=0    failed=0    skipped=11   rescued=0    ignored=0   ",
+    "csr1                       : ok=24   changed=0    unreachable=0    failed=0    skipped=9    rescued=0    ignored=0   "
+   ]
+  },
+  {
+   "step": "cut a -e '{\"port_override\": {\"csr1\": \"ethernet-1/12\"}}'",
+   "rc": 2,
+   "start": 1794337681.2816703,
+   "end": 1794337769.7837458,
+   "secs": 88.5,
+   "recap": [
+    "agg-01                     : ok=20   changed=0    unreachable=0    failed=1    skipped=8    rescued=1    ignored=0   ",
+    "csr1                       : ok=21   changed=0    unreachable=0    failed=1    skipped=7    rescued=1    ignored=0   "
+   ]
+  }
+ ]
+}

@@ -1,0 +1,2 @@
+uplinks:
+  a: {vlan: 100, ip: 172.20.1.0/31, old_port: ethernet-1/1, new_port: ethernet-1/11, peer: csr1}

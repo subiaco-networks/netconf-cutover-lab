@@ -1,0 +1,54 @@
+{#- Desired state of ONE uplink on ONE node, rendered into an edit-config for the candidate.
+    Inputs: u (this host's uplink vars), active_port, inactive_port, isis_metric, link -#}
+<nc:config xmlns:nc="{{ ns.nc }}">
+{% if inactive_port != active_port %}
+  <!-- take the uplink off the port we are leaving (remove = no error if already gone) -->
+  <interface xmlns="{{ ns.intf }}">
+    <name>{{ inactive_port }}</name>
+    <subinterface nc:operation="remove"><index>{{ u.vlan }}</index></subinterface>
+  </interface>
+{% endif %}
+  <interface xmlns="{{ ns.intf }}">
+    <name>{{ active_port }}</name>
+    {#- port admin-state is deliberately NOT set: the new port must already be lit/admin-up.
+        Forcing enable here would silently undo a shutdown someone made on purpose. #}
+    <vlan-tagging xmlns="{{ ns.vlan }}">true</vlan-tagging>
+    <subinterface>
+      <index>{{ u.vlan }}</index>
+      <description>uplink-{{ link }} to {{ u.peer }}</description>
+      <ipv4>
+        <admin-state>enable</admin-state>
+        <address><ip-prefix>{{ u.ip }}</ip-prefix></address>
+      </ipv4>
+      <vlan xmlns="{{ ns.vlan }}">
+        <encap><single-tagged><vlan-id>{{ u.vlan }}</vlan-id></single-tagged></encap>
+      </vlan>
+    </subinterface>
+  </interface>
+  <network-instance xmlns="{{ ns.ni }}">
+    <name>{{ network_instance }}</name>
+{% if inactive_port != active_port %}
+    <interface nc:operation="remove"><name>{{ inactive_port }}.{{ u.vlan }}</name></interface>
+{% endif %}
+    <interface><name>{{ active_port }}.{{ u.vlan }}</name></interface>
+    <protocols>
+      <isis xmlns="{{ ns.isis }}">
+        <instance>
+          <name>{{ isis_instance }}</name>
+{% if inactive_port != active_port %}
+          <interface nc:operation="remove"><interface-name>{{ inactive_port }}.{{ u.vlan }}</interface-name></interface>
+{% endif %}
+          <interface>
+            <interface-name>{{ active_port }}.{{ u.vlan }}</interface-name>
+            <circuit-type>point-to-point</circuit-type>
+            <ipv4-unicast><admin-state>enable</admin-state></ipv4-unicast>
+            <level>
+              <level-number>2</level-number>
+              <metric>{{ isis_metric }}</metric>
+            </level>
+          </interface>
+        </instance>
+      </isis>
+    </protocols>
+  </network-instance>
+</nc:config>

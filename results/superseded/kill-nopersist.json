@@ -1,0 +1,94 @@
+{
+ "flows": {
+  "10.10.1.2": {
+   "tx": 3339,
+   "rx": 3339,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 74.8,
+   "secs": 44.6,
+   "lost_at": []
+  },
+  "10.10.1.3": {
+   "tx": 3334,
+   "rx": 3334,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 74.8,
+   "secs": 44.6,
+   "lost_at": []
+  },
+  "10.10.1.4": {
+   "tx": 3200,
+   "rx": 3200,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.8,
+   "secs": 44.6,
+   "lost_at": []
+  },
+  "10.10.1.5": {
+   "tx": 3208,
+   "rx": 3208,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 72.0,
+   "secs": 44.5,
+   "lost_at": []
+  },
+  "10.10.1.6": {
+   "tx": 3218,
+   "rx": 3218,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 72.3,
+   "secs": 44.5,
+   "lost_at": []
+  },
+  "10.10.1.7": {
+   "tx": 3218,
+   "rx": 3218,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 72.3,
+   "secs": 44.5,
+   "lost_at": []
+  },
+  "10.10.1.8": {
+   "tx": 3339,
+   "rx": 3339,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 75.1,
+   "secs": 44.5,
+   "lost_at": []
+  },
+  "10.10.1.9": {
+   "tx": 3196,
+   "rx": 3196,
+   "lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.9,
+   "secs": 44.4,
+   "lost_at": []
+  }
+ },
+ "steps": [
+  {
+   "step": "drain a (killed after commit)",
+   "rc": -9,
+   "start": 1794338019.4908211,
+   "end": 1794338067.3069282,
+   "secs": 47.8,
+   "recap": []
+  }
+ ]
+}

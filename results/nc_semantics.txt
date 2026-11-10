@@ -1,0 +1,8 @@
+baseline running description: None
+T1 committed confirm-timeout=20s; running now = 'T1-9e3568'
+T1 session open, unconfirmed: running reverted 19.9s after commit
+T2 <close-session> after confirmed commit (timeout 60s): running reverted after 0.0s
+   after the rollback: running=None candidate='T2-091782' (stale edit left in candidate?)
+T3 transport dropped after confirmed commit (timeout 60s): running reverted after 0.3s
+T4 persist=cut-0f42fc, session closed; 3s later running = 'T4-6499b3'
+T4 confirmed from a NEW session with persist-id; 65s later running = 'T4-6499b3'

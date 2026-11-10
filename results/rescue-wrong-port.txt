@@ -1,0 +1,25 @@
+# rescue-wrong-port
+run at 2026-11-10 11:09:41 PST
+TOTAL: 0 lost of 61625 sent (0.0000%) across 8 flows, ping -i 0.01 each (measured 539 pps aggregate)
+a 'gap' is the time between the replies either side of the lost packets;
+packets still in flight when ping is stopped are excluded from tx and lost
+
+## steps
+  drain a                                                 rc=0    10.6s  lost=0
+  cut a -e '{"port_override": {"csr1": "ethernet-1/12"}}' rc=2    88.5s  lost=0
+
+## flows
+  10.10.1.2 -> 10.20.1.2: tx=7841 rx=7841 lost=0 longest_gap=0ms (68.6 pps over 114.4s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.3 -> 10.20.1.2: tx=7877 rx=7877 lost=0 longest_gap=0ms (68.9 pps over 114.4s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.4 -> 10.20.1.2: tx=7624 rx=7624 lost=0 longest_gap=0ms (66.7 pps over 114.3s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.5 -> 10.20.1.2: tx=7625 rx=7625 lost=0 longest_gap=0ms (66.7 pps over 114.3s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.6 -> 10.20.1.2: tx=7599 rx=7599 lost=0 longest_gap=0ms (66.5 pps over 114.3s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.7 -> 10.20.1.2: tx=7616 rx=7616 lost=0 longest_gap=0ms (66.7 pps over 114.2s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.8 -> 10.20.1.2: tx=7845 rx=7845 lost=0 longest_gap=0ms (68.7 pps over 114.2s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-a
+  10.10.1.9 -> 10.20.1.2: tx=7598 rx=7598 lost=0 longest_gap=0ms (66.5 pps over 114.2s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-b
+
+csr1 cut to the WRONG port (ethernet-1/12, cabled to agg-02 e1-11) while agg-01 moved to e1-11 correctly.
+Expected: adjacency never comes up -> rescue cancel-commit on both ends -> back to drained e1-1.
+csr1 IS-IS metrics after: set / network-instance default protocols isis instance i1 interface ethernet-1/1.100 level 2 metric 1000
+set / network-instance default protocols isis instance i1 interface ethernet-1/2.200 level 2 metric 10
+csr1 adjacencies after: [('ethernet-1/1.100', 'up'), ('ethernet-1/2.200', 'up')]

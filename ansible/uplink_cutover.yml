@@ -1,0 +1,332 @@
+---
+# Uplink cutover over NETCONF: candidate + validate + confirmed commit + automatic rollback.
+#
+#   ansible-playbook uplink_cutover.yml -e link=a -e phase=drain                      # dry run (default)
+#   ansible-playbook uplink_cutover.yml -e link=a -e phase=drain -e apply_change=true # do it
+#
+# link  = a | b                  which uplink; the play runs on both ends of it (inventory group link_<x>)
+# phase = drain | cut | restore  drain = raise IS-IS metric, cut = move to the new port, restore = metric back
+#         baseline               lab reset only: back to the original ports and normal metric
+#
+# Lab / test knobs (not for production use):
+#   -e skip_drain=true               allow `cut` without a prior drain, at normal metric (before/after test)
+#   -e discard_stale_candidate=true  discard leftover uncommitted candidate changes before locking
+#   -e pause_after_commit=N          sleep N s after the confirmed commit (used by the kill test)
+#   -e persist_commit=false          plain confirmed commit tied to the NETCONF session (kill test B)
+#   -e '{"port_override": {"csr1": "ethernet-1/12"}}'   cut to the wrong port on one node (rescue test)
+
+- name: "Uplink {{ link | default('?') }} - {{ phase | default('?') }}"
+  hosts: "link_{{ link }}"
+  gather_facts: false
+  vars:
+    apply_change: false
+    skip_drain: false
+    discard_stale_candidate: false
+    pause_after_commit: 0
+    persist_commit: true      # <persist>: the pending commit outlives the NETCONF session; only the timer
+                              # (or cancel-commit) rolls it back. Without it, losing the session rolls back.
+    port_override: {}
+
+    u: "{{ uplinks[link] }}"
+    other_link: "{{ 'b' if link == 'a' else 'a' }}"
+    want: "{{ phase_state[phase] }}"
+    active_port: >-
+      {{ port_override[inventory_hostname]
+         | default(u.new_port if want.port == 'new' else u.old_port) }}
+    inactive_port: "{{ u.old_port if want.port == 'new' else u.new_port }}"
+    active_sub: "{{ active_port }}.{{ u.vlan }}"
+    isis_metric: >-
+      {{ metric_normal if (want.metric == 'normal' or (phase == 'cut' and skip_drain | bool))
+         else metric_drained }}
+    # all IS-IS interfaces with their adjacency state (subtree filter; SR Linux has no :xpath)
+    adj_filter: >-
+      <network-instance xmlns="{{ ns.ni }}"><name>{{ network_instance }}</name><protocols>
+      <isis xmlns="{{ ns.isis }}"><instance><name>{{ isis_instance }}</name>
+      <interface><interface-name/><adjacency><state/></adjacency></interface>
+      </instance></isis></protocols></network-instance>
+    isis_cfg_filter: >-
+      <network-instance xmlns="{{ ns.ni }}"><name>{{ network_instance }}</name><protocols>
+      <isis xmlns="{{ ns.isis }}"><instance><name>{{ isis_instance }}</name>
+      </instance></isis></protocols></network-instance>
+    # the parts of the config this playbook can touch, for the candidate/running diff
+    diff_filters:
+      - '<interface xmlns="{{ ns.intf }}"><name>{{ u.old_port }}</name></interface>'
+      - '<interface xmlns="{{ ns.intf }}"><name>{{ u.new_port }}</name></interface>'
+      - '<interface xmlns="{{ ns.intf }}"><name>{{ active_port }}</name></interface>'
+      - '<network-instance xmlns="{{ ns.ni }}"><name>{{ network_instance }}</name></network-instance>'
+
+  tasks:
+    - name: Check arguments
+      ansible.builtin.assert:
+        that:
+          - link in ['a', 'b']
+          - phase in ['drain', 'cut', 'restore', 'baseline']
+          - link in uplinks
+        fail_msg: "usage: -e link=a|b -e phase=drain|cut|restore [-e apply_change=true]"
+        quiet: true
+
+    - name: Plan
+      ansible.builtin.debug:
+        msg: >-
+          {{ 'APPLY' if apply_change | bool else 'DRY RUN' }} link {{ link }} phase {{ phase }}:
+          {{ u.vlan }} on {{ active_port }} (leaving {{ inactive_port }}), IS-IS metric {{ isis_metric }},
+          peer {{ u.peer }}, confirm-timeout {{ confirm_timeout }}s
+
+    - name: Cutover transaction
+      block:
+        # ---------------------------------------------------------------- 1. other uplink must be up
+        - name: "1. Read IS-IS adjacencies"
+          ansible.netcommon.netconf_get:
+            filter: "{{ adj_filter }}"
+          register: adj_before
+
+        - name: "1. Other uplink ({{ other_link }}) must have an IS-IS adjacency up on {{ site_router }}"
+          ansible.builtin.assert:
+            that: other_up | length > 0
+            fail_msg: >-
+              STOP: uplink {{ other_link }} has no IS-IS adjacency up ({{ adjs }}). Changing uplink
+              {{ link }} now would isolate the site.
+            success_msg: "uplink {{ other_link }} up on {{ other_up }}"
+          vars:
+            adjs: "{{ adj_before.stdout | isis_adjacencies }}"
+            o: "{{ uplinks[other_link] }}"
+            other_up: >-
+              {{ [o.old_port ~ '.' ~ o.vlan, o.new_port ~ '.' ~ o.vlan]
+                 | select('in', adjs | dict2items | selectattr('value', 'eq', 'up') | map(attribute='key'))
+                 | list }}
+          when: inventory_hostname == site_router
+
+        - name: "1b. Read running IS-IS config (drain check)"
+          ansible.netcommon.netconf_get:
+            source: running
+            filter: "{{ isis_cfg_filter }}"
+          register: isis_running
+          when: phase == 'cut' and not skip_drain | bool
+
+        - name: "1b. A cut needs the link drained first"
+          ansible.builtin.assert:
+            that: current_metric | int == metric_drained | int
+            fail_msg: >-
+              STOP: uplink {{ link }} is not drained on {{ inventory_hostname }} (IS-IS metric
+              {{ current_metric }}). Run phase=drain first, or -e skip_drain=true for the lab test.
+            success_msg: "drained (metric {{ current_metric }})"
+          vars:
+            metrics: "{{ isis_running.stdout | isis_metrics }}"
+            current_metric: >-
+              {{ metrics[u.old_port ~ '.' ~ u.vlan] | default(metrics[u.new_port ~ '.' ~ u.vlan] | default('none')) }}
+          when: phase == 'cut' and not skip_drain | bool
+
+        # ---------------------------------------------------------------- 2. lock
+        - name: "2. Lock the candidate datastore"
+          ansible.netcommon.netconf_rpc:
+            rpc: lock
+            xmlns: "{{ ns.nc }}"
+            content: "<target><candidate/></target>"
+          register: lock1
+          ignore_errors: true
+
+        - name: "2. Candidate is not clean - refuse"
+          ansible.builtin.fail:
+            msg: >-
+              Lock refused: {{ lock1.msg | default('') | regex_replace('\s+', ' ') }}.
+              The shared candidate holds uncommitted changes (after a session-loss rollback SR Linux
+              leaves the rolled-back edit in the candidate). Inspect it, then re-run with
+              -e discard_stale_candidate=true to drop it.
+          when: lock1 is failed and not discard_stale_candidate | bool
+
+        - name: "2. Discard stale candidate changes (requested)"
+          ansible.netcommon.netconf_rpc:
+            rpc: discard-changes
+            xmlns: "{{ ns.nc }}"
+          when: lock1 is failed
+
+        - name: "2. Lock the candidate datastore (retry)"
+          ansible.netcommon.netconf_rpc:
+            rpc: lock
+            xmlns: "{{ ns.nc }}"
+            content: "<target><candidate/></target>"
+          when: lock1 is failed
+
+        - name: "2. Locked"
+          ansible.builtin.set_fact:
+            locked: true
+
+        # ---------------------------------------------------------------- 3. edit candidate only
+        - name: "3. Edit the candidate (target=candidate, no commit)"
+          ansible.netcommon.netconf_config:
+            target: candidate
+            content: "{{ lookup('ansible.builtin.template', 'uplink.xml.j2') }}"
+            default_operation: merge
+            lock: never
+            commit: false
+            validate: false
+
+        # ---------------------------------------------------------------- 4. validate
+        - name: "4. <validate> the candidate"
+          ansible.netcommon.netconf_rpc:
+            rpc: validate
+            xmlns: "{{ ns.nc }}"
+            content: "<source><candidate/></source>"
+
+        # ---------------------------------------------------------------- 5. diff
+        - name: "5. Read running"
+          ansible.netcommon.netconf_get:
+            source: running
+            filter: "{{ item }}"
+          loop: "{{ diff_filters | unique }}"
+          loop_control: {label: "{{ item | regex_search('<name>[^<]+') | replace('<name>', '') }}"}
+          register: run_cfg
+
+        - name: "5. Read candidate"
+          ansible.netcommon.netconf_get:
+            source: candidate
+            filter: "{{ item }}"
+          loop: "{{ diff_filters | unique }}"
+          loop_control: {label: "{{ item | regex_search('<name>[^<]+') | replace('<name>', '') }}"}
+          register: cand_cfg
+
+        - name: "5. Diff running -> candidate"
+          ansible.builtin.set_fact:
+            cand_diff: >-
+              {% set d = [] %}{% for r, c in run_cfg.results | zip(cand_cfg.results) %}{% set _ = d.extend(r.stdout | xml_diff(c.stdout)) %}{% endfor %}{{ d }}
+
+        - name: "5. Diff running -> candidate"
+          ansible.builtin.debug:
+            msg: "{{ cand_diff if cand_diff | length else ['(no change - candidate equals running)'] }}"
+
+        # ---------------------------------------------------------------- 6. dry run stops here
+        - name: "6. Dry run: discard the candidate and unlock"
+          when: not apply_change | bool
+          block:
+            - name: "6. Discard candidate"
+              ansible.netcommon.netconf_rpc:
+                rpc: discard-changes
+                xmlns: "{{ ns.nc }}"
+            - name: "6. Unlock"
+              ansible.netcommon.netconf_rpc:
+                rpc: unlock
+                xmlns: "{{ ns.nc }}"
+                content: "<target><candidate/></target>"
+            - name: "6. Dry run complete"
+              ansible.builtin.debug:
+                msg: "DRY RUN - nothing committed. Re-run with -e apply_change=true to apply."
+            - name: "6. Stop"
+              ansible.builtin.meta: end_host
+
+        # ---------------------------------------------------------------- 7. confirmed commit
+        - name: "7. Persist id for this run"
+          ansible.builtin.set_fact:
+            persist_id: "cutover-{{ link }}-{{ phase }}-{{ inventory_hostname }}-{{ lookup('ansible.builtin.pipe', 'date +%s%N') }}"
+
+        - name: "7. <commit><confirmed/> confirm-timeout {{ confirm_timeout }}s"
+          ansible.netcommon.netconf_rpc:
+            rpc: commit
+            xmlns: "{{ ns.nc }}"
+            content: >-
+              <confirmed/><confirm-timeout>{{ confirm_timeout }}</confirm-timeout>{{
+              ('<persist>' ~ persist_id ~ '</persist>') if persist_commit | bool else '' }}
+          register: commit1
+
+        - name: "7. Committed (pending confirmation)"
+          ansible.builtin.set_fact:
+            committed: true
+            committed_at: "{{ now(fmt='%H:%M:%S.%f') }}"
+
+        - name: "7. CONFIRMED-COMMIT-SENT"
+          ansible.builtin.debug:
+            msg: >-
+              confirmed commit at {{ committed_at }}; {{ ('persist-id ' ~ persist_id) if persist_commit | bool
+              else 'no persist (tied to this NETCONF session)' }}; auto-rollback in {{ confirm_timeout }}s unless confirmed"
+
+        - name: "7. Pause after commit (test knob)"
+          ansible.builtin.wait_for:
+            timeout: "{{ pause_after_commit | int }}"
+          when: pause_after_commit | int > 0
+
+        # ---------------------------------------------------------------- 8. verify
+        - name: "8. Wait for IS-IS adjacency on {{ active_sub }}"
+          ansible.netcommon.netconf_get:
+            filter: "{{ adj_filter }}"
+          register: adj_after
+          until: (adj_after.stdout | isis_adjacencies).get(active_sub) == 'up'
+          retries: "{{ (adjacency_wait | int / 2) | int }}"
+          delay: 2
+
+        - name: "8. Recheck other uplink ({{ other_link }}) on {{ site_router }}"
+          ansible.builtin.assert:
+            that: other_up | length > 0
+            fail_msg: "uplink {{ other_link }} lost its IS-IS adjacency during the change ({{ adjs }})"
+            success_msg: "uplink {{ other_link }} still up on {{ other_up }}"
+          vars:
+            adjs: "{{ adj_after.stdout | isis_adjacencies }}"
+            o: "{{ uplinks[other_link] }}"
+            other_up: >-
+              {{ [o.old_port ~ '.' ~ o.vlan, o.new_port ~ '.' ~ o.vlan]
+                 | select('in', adjs | dict2items | selectattr('value', 'eq', 'up') | map(attribute='key'))
+                 | list }}
+          when: inventory_hostname == site_router
+
+        - name: "8. Checks passed on this node"
+          ansible.builtin.set_fact:
+            checks_passed: true
+
+        - name: "8. Both ends must pass before either end confirms"
+          ansible.builtin.assert:
+            that: hostvars[item].checks_passed | default(false)
+            fail_msg: "{{ item }} did not pass its checks - not confirming on either end"
+            quiet: true
+          loop: "{{ ansible_play_hosts_all }}"
+
+        # ---------------------------------------------------------------- 9. confirm
+        - name: "9. Confirming <commit>"
+          ansible.netcommon.netconf_rpc:
+            rpc: commit
+            xmlns: "{{ ns.nc }}"
+            content: "{{ ('<persist-id>' ~ persist_id ~ '</persist-id>') if persist_commit | bool else omit }}"
+
+        - name: "9. Confirmed"
+          ansible.builtin.set_fact:
+            confirmed: true
+
+        - name: "9. Unlock"
+          ansible.netcommon.netconf_rpc:
+            rpc: unlock
+            xmlns: "{{ ns.nc }}"
+            content: "<target><candidate/></target>"
+
+        - name: "9. Done"
+          ansible.builtin.debug:
+            msg: "CONFIRMED link {{ link }} phase {{ phase }} at {{ now(fmt='%H:%M:%S.%f') }}"
+
+      rescue:
+        - name: "RESCUE: <cancel-commit> (roll back now, do not wait for the timer)"
+          ansible.netcommon.netconf_rpc:
+            rpc: cancel-commit
+            xmlns: "{{ ns.nc }}"
+            content: "{{ ('<persist-id>' ~ persist_id ~ '</persist-id>') if persist_commit | bool else omit }}"
+          when: committed | default(false) and not confirmed | default(false)
+          ignore_errors: true
+
+        - name: "RESCUE: discard the candidate"
+          ansible.netcommon.netconf_rpc:
+            rpc: discard-changes
+            xmlns: "{{ ns.nc }}"
+          when: locked | default(false)
+          ignore_errors: true
+
+        - name: "RESCUE: unlock"
+          ansible.netcommon.netconf_rpc:
+            rpc: unlock
+            xmlns: "{{ ns.nc }}"
+            content: "<target><candidate/></target>"
+          when: locked | default(false)
+          ignore_errors: true
+
+        - name: "RESCUE: FAILED"
+          ansible.builtin.fail:
+            msg: >-
+              CUTOVER FAILED on {{ inventory_hostname }} at task '{{ ansible_failed_task.name | default('?') }}':
+              {{ ansible_failed_result.msg | default(ansible_failed_result) | string | regex_replace('\s+', ' ') | truncate(400) }}.
+              {{ 'Commit was cancelled - running is back to the pre-change config.'
+                 if committed | default(false) and not confirmed | default(false)
+                 else 'Nothing was committed.' }}

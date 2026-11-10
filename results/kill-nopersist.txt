@@ -1,0 +1,28 @@
+# kill-nopersist
+run at 2026-11-10 11:22:28 PST
+TOTAL: 0 lost of 21753 sent (0.0000%) across 8 flows, ping -i 0.01 each (measured 486 pps aggregate)
+a 'gap' is the time between the replies either side of the lost packets;
+packets still in flight when ping is stopped are excluded from tx and lost
+
+## steps
+  drain a (killed after commit)                           rc=-9    47.9s  lost=0
+
+## flows
+  10.10.1.2 -> 10.20.1.2: tx=2748 rx=2748 lost=0 longest_gap=0ms (61.2 pps over 44.9s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.3 -> 10.20.1.2: tx=2749 rx=2749 lost=0 longest_gap=0ms (61.3 pps over 44.9s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-a
+  10.10.1.4 -> 10.20.1.2: tx=2710 rx=2710 lost=0 longest_gap=0ms (60.4 pps over 44.8s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.5 -> 10.20.1.2: tx=2720 rx=2720 lost=0 longest_gap=0ms (60.7 pps over 44.8s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.6 -> 10.20.1.2: tx=2703 rx=2703 lost=0 longest_gap=0ms (60.4 pps over 44.8s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.7 -> 10.20.1.2: tx=2695 rx=2695 lost=0 longest_gap=0ms (60.2 pps over 44.7s, 0 in flight at stop - not counted)   path fwd=uplink-a rev=uplink-b
+  10.10.1.8 -> 10.20.1.2: tx=2735 rx=2735 lost=0 longest_gap=0ms (61.2 pps over 44.7s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-a
+  10.10.1.9 -> 10.20.1.2: tx=2693 rx=2693 lost=0 longest_gap=0ms (60.3 pps over 44.7s, 0 in flight at stop - not counted)   path fwd=uplink-b rev=uplink-b
+
+mode: nopersist  (-e persist_commit=false), confirm-timeout 60s
+change: phase=drain link=a (metric 10 -> 1000 on csr1 + agg-01); playbook SIGKILLed 1.1s after commit
+time from commit until running metric was back to 10 (polled every 0.25 s from separate NETCONF sessions):
+   csr1: 30.8s
+   agg-01: 30.9s
+persistent connection daemons (ansible_connection_cli_stub, they hold the NETCONF sessions) alive right after kill: 2; all gone at 31.0s after commit
+orphaned ansible-playbook worker processes left by SIGKILL of the main pid: 2 (killed by the test afterwards)
+after rollback: {'csr1': {'running': 10, 'candidate': 1000, 'lock': 'lock refused: Error [FailedPrecondition]: Lock denied - candidate has been modified'}, 'agg-01': {'running': 10, 'candidate': 1000, 'lock': 'lock refused: Error [FailedPrecondition]: Lock denied - candidate has been modified'}}
+next run (no discard flag): rc=2 - failed, see log

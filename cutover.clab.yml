@@ -1,0 +1,56 @@
+# Uplink cutover lab: csr1 (site router) dual-homed to agg-01 / agg-02 over IS-IS.
+#   uplink A: csr1 e1-1 <-> agg-01 e1-1  VLAN 100   (spare / "new 10G": e1-11 <-> e1-11)
+#   uplink B: csr1 e1-2 <-> agg-02 e1-1  VLAN 200   (spare / "new 10G": e1-12 <-> e1-11)
+#   agg-01 e1-2 <-> agg-02 e1-2  inter-agg link (VLAN 300)
+#   h1 behind csr1, h2 dual-homed behind both aggs (ECMP default route)
+name: cutover
+mgmt:
+  network: cutover-mgmt
+  ipv4-subnet: 172.30.40.0/24
+topology:
+  kinds:
+    nokia_srlinux:
+      image: ghcr.io/nokia/srlinux:26.7.2
+      type: ixr-d2l
+    linux:
+      image: ghcr.io/hellt/network-multitool:latest
+  nodes:
+    csr1:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.30.40.11
+      startup-config: configs/csr1.cfg
+    agg-01:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.30.40.21
+      startup-config: configs/agg-01.cfg
+    agg-02:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.30.40.22
+      startup-config: configs/agg-02.cfg
+    h1:
+      kind: linux
+      mgmt-ipv4: 172.30.40.101
+      exec:
+        - ip link set eth1 up
+        - sh -c 'for i in 2 3 4 5 6 7 8 9; do ip addr add 10.10.1.$i/24 dev eth1; done'
+        - ip route replace default via 10.10.1.1 dev eth1
+    h2:
+      kind: linux
+      mgmt-ipv4: 172.30.40.102
+      exec:
+        - ip link set eth1 up
+        - ip link set eth2 up
+        - ip addr add 10.20.1.2/32 dev lo
+        - ip addr add 172.20.11.1/31 dev eth1
+        - ip addr add 172.20.12.1/31 dev eth2
+        - sysctl -w net.ipv4.fib_multipath_hash_policy=1
+        - ip route replace default nexthop via 172.20.11.0 dev eth1 nexthop via 172.20.12.0 dev eth2
+  links:
+    - endpoints: ["csr1:e1-1", "agg-01:e1-1"]     # uplink A (current)
+    - endpoints: ["csr1:e1-2", "agg-02:e1-1"]     # uplink B (current)
+    - endpoints: ["csr1:e1-11", "agg-01:e1-11"]   # uplink A spare ("new 10G")
+    - endpoints: ["csr1:e1-12", "agg-02:e1-11"]   # uplink B spare ("new 10G")
+    - endpoints: ["agg-01:e1-2", "agg-02:e1-2"]   # inter-agg
+    - endpoints: ["csr1:e1-3", "h1:eth1"]
+    - endpoints: ["agg-01:e1-3", "h2:eth1"]
+    - endpoints: ["agg-02:e1-3", "h2:eth2"]

@@ -1,0 +1,108 @@
+{
+ "flows": {
+  "10.10.1.2": {
+   "tx": 2413,
+   "rx": 2413,
+   "lost": 0,
+   "longest_gap_ms": 0,
+   "pps": 65.9,
+   "secs": 36.6,
+   "lost_at": [],
+   "inflight_at_stop": 0
+  },
+  "10.10.1.3": {
+   "tx": 2422,
+   "rx": 2422,
+   "lost": 0,
+   "longest_gap_ms": 0,
+   "pps": 66.2,
+   "secs": 36.6,
+   "lost_at": [],
+   "inflight_at_stop": 0
+  },
+  "10.10.1.4": {
+   "tx": 2357,
+   "rx": 2357,
+   "lost": 0,
+   "longest_gap_ms": 0,
+   "pps": 64.4,
+   "secs": 36.6,
+   "lost_at": [],
+   "inflight_at_stop": 0
+  },
+  "10.10.1.5": {
+   "tx": 2352,
+   "rx": 2352,
+   "lost": 0,
+   "longest_gap_ms": 0,
+   "pps": 64.4,
+   "secs": 36.5,
+   "lost_at": [],
+   "inflight_at_stop": 0
+  },
+  "10.10.1.6": {
+   "tx": 2340,
+   "rx": 2340,
+   "lost": 0,
+   "longest_gap_ms": 0,
+   "pps": 64.1,
+   "secs": 36.5,
+   "lost_at": [],
+   "inflight_at_stop": 0
+  },
+  "10.10.1.7": {
+   "tx": 2355,
+   "rx": 2355,
+   "lost": 0,
+   "longest_gap_ms": 0,
+   "pps": 64.5,
+   "secs": 36.5,
+   "lost_at": [],
+   "inflight_at_stop": 0
+  },
+  "10.10.1.8": {
+   "tx": 2395,
+   "rx": 2395,
+   "lost": 0,
+   "longest_gap_ms": 0,
+   "pps": 65.7,
+   "secs": 36.5,
+   "lost_at": [],
+   "inflight_at_stop": 0
+  },
+  "10.10.1.9": {
+   "tx": 2332,
+   "rx": 2332,
+   "lost": 0,
+   "longest_gap_ms": 0,
+   "pps": 64.0,
+   "secs": 36.4,
+   "lost_at": [],
+   "inflight_at_stop": 0
+  }
+ },
+ "steps": [
+  {
+   "step": "drain a",
+   "rc": 0,
+   "start": 1794337566.2085412,
+   "end": 1794337576.6588848,
+   "secs": 10.5,
+   "recap": [
+    "agg-01                     : ok=22   changed=0    unreachable=0    failed=0    skipped=11   rescued=0    ignored=0   ",
+    "csr1                       : ok=24   changed=0    unreachable=0    failed=0    skipped=9    rescued=0    ignored=0   "
+   ]
+  },
+  {
+   "step": "cut a",
+   "rc": 0,
+   "start": 1794337581.6592023,
+   "end": 1794337592.6030188,
+   "secs": 10.9,
+   "recap": [
+    "agg-01                     : ok=24   changed=0    unreachable=0    failed=0    skipped=9    rescued=0    ignored=0   ",
+    "csr1                       : ok=26   changed=0    unreachable=0    failed=0    skipped=7    rescued=0    ignored=0   "
+   ]
+  }
+ ]
+}

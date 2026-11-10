@@ -1,0 +1,7 @@
+clab-*/
+ansible/collections/
+results/*.raw/
+__pycache__/
+*.pyc
+.DS_Store
+cutover_findings.zip
