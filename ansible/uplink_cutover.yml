@@ -1,25 +1,45 @@
 ---
-# Uplink cutover over NETCONF: candidate + validate + confirmed commit + automatic rollback.
+# Make-before-break fiber uplift for a cell site over NETCONF:
+# candidate + validate + confirmed commit (with <persist>) + automatic rollback, on every node at once.
 #
-#   ansible-playbook uplink_cutover.yml -e link=a -e phase=drain                      # dry run (default)
-#   ansible-playbook uplink_cutover.yml -e link=a -e phase=drain -e apply_change=true # do it
+#   ansible-playbook uplink_cutover.yml -e site=csr1 -e phase=turnup                      # dry run (default)
+#   ansible-playbook uplink_cutover.yml -e site=csr1 -e phase=turnup -e apply_change=true # do it
 #
-# link  = a | b                  which uplink; the play runs on both ends of it (inventory group link_<x>)
-# phase = drain | cut | restore  drain = raise IS-IS metric, cut = move to the new port, restore = metric back
-#         baseline               lab reset only: back to the original ports and normal metric
+# A site's CSR has ONE fiber carrying two VLANs: link a = odd VLAN (to agg-01), link b = even VLAN (to agg-02).
+# The telco muxes every site onto one MTSO fiber per agg, so on the aggs old and new circuits share a port.
 #
-# Lab / test knobs (not for production use):
-#   -e skip_drain=true               allow `cut` without a prior drain, at normal metric (before/after test)
+# site  = csr1 | csr2
+# link  = a | b      optional for turnup/swing/decom/baseline (default: both VLANs = the whole fiber),
+#                    required for rehome-* (one VLAN at a time, so the other VLAN carries the site)
+# phase = one run = one confirmed commit on every node of the run (definitions in group_vars/srl.yml `phases`)
+#   turnup          new circuits (new CSR port, new VLAN/IP) up alongside the old ones at metric 1000
+#   swing           new circuits to metric 10 and old circuits to metric 1000, in one commit per node
+#   decom           remove the old circuits (refused while they still carry traffic)
+#   rehome-drain    later window, one VLAN: new circuit to metric 1000
+#   rehome-cut      move that VLAN (same VLAN/IP) from the new CSR port to the original port, still drained
+#   rehome-restore  back to metric 10 on the original port
+#   baseline        lab reset only: old circuits on the original port, metric 10, new circuits removed
+#
+# Lab / test knobs (LAB ONLY - they exist to measure what the guards prevent; never use them in production):
+#   -e skip_decom_checks=true        decom without the "old circuit idle" and "new adjacency up" checks
+#                                    (both the pre-check and the post-commit adjacency check)
+#   -e turnup_metric=normal          turn the new circuits up at metric 10 and skip the turnup traffic check
+#                                    (with skip_decom_checks: the break-before-make comparison)
+#   -e skip_drain=true               allow rehome-cut without a prior rehome-drain
 #   -e discard_stale_candidate=true  discard leftover uncommitted candidate changes before locking
 #   -e pause_after_commit=N          sleep N s after the confirmed commit (used by the kill test)
-#   -e persist_commit=false          plain confirmed commit tied to the NETCONF session (kill test B)
-#   -e '{"port_override": {"csr1": "ethernet-1/12"}}'   cut to the wrong port on one node (rescue test)
+#   -e persist_commit=false          plain confirmed commit tied to the NETCONF session
+#   -e confirm_timeout=N             shorter rollback timer (kill test)
+#   -e '{"port_override": {"csr1": "ethernet-1/12"}}'   re-home onto the wrong port on one node (rescue test)
 
-- name: "Uplink {{ link | default('?') }} - {{ phase | default('?') }}"
-  hosts: "link_{{ link }}"
+- name: "Site {{ site | default('?') }} uplink {{ link | default('a+b') or 'a+b' }} - {{ phase | default('?') }}"
+  hosts: "site_{{ site }}{{ ('_' ~ link) if link | default('') else '' }}"
   gather_facts: false
   vars:
+    link: ""
     apply_change: false
+    skip_decom_checks: false
+    turnup_metric: ""
     skip_drain: false
     discard_stale_candidate: false
     pause_after_commit: 0
@@ -27,17 +47,15 @@
                               # (or cancel-commit) rolls it back. Without it, losing the session rolls back.
     port_override: {}
 
-    u: "{{ uplinks[link] }}"
+    su: "{{ uplinks[site] }}"                                       # this node's side of the site
+    run_links: "{{ [link] if link else ['a', 'b'] }}"
+    my_links: "{{ run_links | select('in', su) | list }}"          # an agg terminates only one of them
     other_link: "{{ 'b' if link == 'a' else 'a' }}"
-    want: "{{ phase_state[phase] }}"
-    active_port: >-
-      {{ port_override[inventory_hostname]
-         | default(u.new_port if want.port == 'new' else u.old_port) }}
-    inactive_port: "{{ u.old_port if want.port == 'new' else u.new_port }}"
-    active_sub: "{{ active_port }}.{{ u.vlan }}"
-    isis_metric: >-
-      {{ metric_normal if (want.metric == 'normal' or (phase == 'cut' and skip_drain | bool))
-         else metric_drained }}
+    my_override: "{{ port_override.get(inventory_hostname, '') }}"
+    plan: >-
+      {{ su | site_plan(my_links, phases[phase], metric_normal, metric_drained, my_override,
+                        turnup_metric if phase == 'turnup' else '') }}
+    ensure_subs: "{{ plan.ensure | map(attribute='sub') | list }}"
     # all IS-IS interfaces with their adjacency state (subtree filter; SR Linux has no :xpath)
     adj_filter: >-
       <network-instance xmlns="{{ ns.ni }}"><name>{{ network_instance }}</name><protocols>
@@ -48,73 +66,145 @@
       <network-instance xmlns="{{ ns.ni }}"><name>{{ network_instance }}</name><protocols>
       <isis xmlns="{{ ns.isis }}"><instance><name>{{ isis_instance }}</name>
       </instance></isis></protocols></network-instance>
-    # the parts of the config this playbook can touch, for the candidate/running diff
-    diff_filters:
-      - '<interface xmlns="{{ ns.intf }}"><name>{{ u.old_port }}</name></interface>'
-      - '<interface xmlns="{{ ns.intf }}"><name>{{ u.new_port }}</name></interface>'
-      - '<interface xmlns="{{ ns.intf }}"><name>{{ active_port }}</name></interface>'
-      - '<network-instance xmlns="{{ ns.ni }}"><name>{{ network_instance }}</name></network-instance>'
+    # out-packets of every subinterface (one filter: ncclient needs a single root element)
+    counters_filter: >-
+      <interface xmlns="{{ ns.intf }}"><name/><subinterface><index/><statistics><out-packets/>
+      </statistics></subinterface></interface>
+    # the parts of the config this playbook can touch, for the candidate/running diff. On the aggs the port is
+    # shared with other sites, so any change to another site's subinterface would show up in this diff.
+    diff_filters: >-
+      {{ (su | site_ports(my_links, my_override)
+          | map('regex_replace', '^(.*)$', '<interface xmlns="' ~ ns.intf ~ '"><name>\1</name></interface>') | list)
+         + ['<network-instance xmlns="' ~ ns.ni ~ '"><name>' ~ network_instance ~ '</name></network-instance>'] }}
 
   tasks:
     - name: Check arguments
       ansible.builtin.assert:
         that:
-          - link in ['a', 'b']
-          - phase in ['drain', 'cut', 'restore', 'baseline']
-          - link in uplinks
-        fail_msg: "usage: -e link=a|b -e phase=drain|cut|restore [-e apply_change=true]"
+          - phase in phases
+          - link in ['', 'a', 'b']
+          - not phase.startswith('rehome') or link != ''
+          - turnup_metric in ['', 'normal', 'drained']
+          - site in uplinks
+          - my_links | length > 0
+        fail_msg: >-
+          usage: -e site=csr1|csr2 -e phase={{ phases | join('|') }} [-e link=a|b (required for rehome-*)]
+          [-e apply_change=true]
         quiet: true
+
+    - name: Circuit names on this node
+      ansible.builtin.set_fact:
+        old_subs: "{{ su | site_subs(my_links, 'old') }}"
+        new_subs: "{{ su | site_subs(my_links, 'new') }}"
+        homed_subs: "{{ su | site_subs(my_links, 'homed') }}"
 
     - name: Plan
       ansible.builtin.debug:
         msg: >-
-          {{ 'APPLY' if apply_change | bool else 'DRY RUN' }} link {{ link }} phase {{ phase }}:
-          {{ u.vlan }} on {{ active_port }} (leaving {{ inactive_port }}), IS-IS metric {{ isis_metric }},
-          peer {{ u.peer }}, confirm-timeout {{ confirm_timeout }}s
+          {{ 'APPLY' if apply_change | bool else 'DRY RUN' }} site {{ site }} uplink(s) {{ my_links | join('+') }}
+          phase {{ phase }} (confirm-timeout {{ confirm_timeout }}s):
+          ensure {{ plan.ensure | map(attribute='sub') | zip(plan.ensure | map(attribute='metric'))
+                    | map('join', ' metric ') | list }};
+          remove {{ plan.remove | map(attribute='sub') | list }}
 
-    - name: Cutover transaction
+    - name: Uplift transaction
       block:
-        # ---------------------------------------------------------------- 1. other uplink must be up
+        # ---------------------------------------------------------------- 1. pre-checks (nothing locked yet)
         - name: "1. Read IS-IS adjacencies"
           ansible.netcommon.netconf_get:
             filter: "{{ adj_filter }}"
           register: adj_before
 
-        - name: "1. Other uplink ({{ other_link }}) must have an IS-IS adjacency up on {{ site_router }}"
+        - name: "1. Adjacencies up before the change"
+          ansible.builtin.set_fact:
+            up_before: "{{ adj_before.stdout | adj_up }}"
+            old_was_up: "{{ (su | site_subs(my_links, 'old')) | difference(adj_before.stdout | adj_up) | length == 0 }}"
+
+        # re-home moves one VLAN; the site's other VLAN (same CSR, other agg) must be carrying the site
+        - name: "1. Other VLAN (uplink {{ other_link }}) of {{ site }} must have an IS-IS adjacency up"
           ansible.builtin.assert:
             that: other_up | length > 0
             fail_msg: >-
-              STOP: uplink {{ other_link }} has no IS-IS adjacency up ({{ adjs }}). Changing uplink
-              {{ link }} now would isolate the site.
+              STOP: uplink {{ other_link }} of {{ site }} has no IS-IS adjacency up ({{ up_before }}).
+              Re-homing uplink {{ link }} now would isolate the site.
             success_msg: "uplink {{ other_link }} up on {{ other_up }}"
           vars:
-            adjs: "{{ adj_before.stdout | isis_adjacencies }}"
-            o: "{{ uplinks[other_link] }}"
             other_up: >-
-              {{ [o.old_port ~ '.' ~ o.vlan, o.new_port ~ '.' ~ o.vlan]
-                 | select('in', adjs | dict2items | selectattr('value', 'eq', 'up') | map(attribute='key'))
-                 | list }}
-          when: inventory_hostname == site_router
+              {{ ((su | site_subs([other_link], 'old')) + (su | site_subs([other_link], 'new'))
+                  + (su | site_subs([other_link], 'homed'))) | unique | select('in', up_before) | list }}
+          when: phase.startswith('rehome') and inventory_hostname == site
 
-        - name: "1b. Read running IS-IS config (drain check)"
+        - name: "1. Swing needs every new circuit's adjacency up"
+          ansible.builtin.assert:
+            that: missing | length == 0
+            fail_msg: >-
+              REFUSED: no IS-IS adjacency up on {{ missing }} on {{ inventory_hostname }} (up: {{ up_before }}).
+              Run phase=turnup first. Swinging onto a circuit without an adjacency would move nothing, or worse.
+            success_msg: "new circuits {{ new_subs }} up"
+          vars:
+            missing: "{{ new_subs | difference(up_before) }}"
+          when: phase == 'swing'
+
+        - name: "1. Decom needs every new circuit's adjacency up"
+          ansible.builtin.assert:
+            that: missing | length == 0
+            fail_msg: >-
+              REFUSED: no IS-IS adjacency up on the new circuit(s) {{ missing }} on {{ inventory_hostname }}.
+              Removing the old circuits now would leave the site with nothing.
+            success_msg: "new circuits {{ new_subs }} up"
+          vars:
+            missing: "{{ new_subs | difference(up_before) }}"
+          when: phase == 'decom' and not skip_decom_checks | bool
+
+        - name: "1. Decom: measure what the old circuits carry"
+          ansible.builtin.include_tasks: tasks/measure.yml
+          vars: {measure_label: "1. pre-decom traffic", measure_settle: false}
+          when: phase == 'decom' and not skip_decom_checks | bool
+
+        - name: "1. Decom needs every old circuit idle on every end"
+          ansible.builtin.assert:
+            that: busy | length == 0
+            fail_msg: >-
+              REFUSED: the old circuit still carries traffic: {{ busy | items2dict }} (out-pps, threshold
+              {{ circuit_idle_pps }} on each end). Run phase=swing first, or find out what is still using it.
+            success_msg: "old circuits idle on every end: {{ old_rates }}"
+          vars:
+            old_rates: >-
+              {{ ansible_play_hosts | end_rates(ansible_play_hosts | map('extract', hostvars, 'pps') | list,
+                                                ansible_play_hosts | map('extract', hostvars, 'old_subs') | list) }}
+            busy: "{{ old_rates | dict2items | selectattr('value', 'gt', circuit_idle_pps | float) | list }}"
+          when: phase == 'decom' and not skip_decom_checks | bool
+
+        - name: "1. Read running IS-IS config (drain check)"
           ansible.netcommon.netconf_get:
             source: running
             filter: "{{ isis_cfg_filter }}"
           register: isis_running
-          when: phase == 'cut' and not skip_drain | bool
+          when: phase == 'rehome-cut' and not skip_drain | bool
 
-        - name: "1b. A cut needs the link drained first"
+        - name: "1. Rehome-cut needs the circuit drained first"
           ansible.builtin.assert:
             that: current_metric | int == metric_drained | int
             fail_msg: >-
-              STOP: uplink {{ link }} is not drained on {{ inventory_hostname }} (IS-IS metric
-              {{ current_metric }}). Run phase=drain first, or -e skip_drain=true for the lab test.
+              STOP: uplink {{ link }} of {{ site }} is not drained on {{ inventory_hostname }} (IS-IS metric
+              {{ current_metric }}). Run phase=rehome-drain first, or -e skip_drain=true for the lab test.
             success_msg: "drained (metric {{ current_metric }})"
           vars:
             metrics: "{{ isis_running.stdout | isis_metrics }}"
-            current_metric: >-
-              {{ metrics[u.old_port ~ '.' ~ u.vlan] | default(metrics[u.new_port ~ '.' ~ u.vlan] | default('none')) }}
-          when: phase == 'cut' and not skip_drain | bool
+            current_metric: "{{ metrics[new_subs[0]] | default(metrics[homed_subs[0]] | default('none')) }}"
+          when: phase == 'rehome-cut' and not skip_drain | bool
+
+        - name: "1. Pre-checks passed on this node"
+          ansible.builtin.set_fact:
+            precheck_passed: true
+
+        # a node that failed a pre-check has left the play; without this gate the other ends would carry on alone
+        - name: "1. Every node must pass its pre-checks before any node locks"
+          ansible.builtin.assert:
+            that: hostvars[item].precheck_passed | default(false)
+            fail_msg: "{{ item }} did not pass its pre-checks - not touching any node"
+            quiet: true
+          loop: "{{ ansible_play_hosts_all }}"
 
         # ---------------------------------------------------------------- 2. lock
         - name: "2. Lock the candidate datastore"
@@ -173,7 +263,7 @@
           ansible.netcommon.netconf_get:
             source: running
             filter: "{{ item }}"
-          loop: "{{ diff_filters | unique }}"
+          loop: "{{ diff_filters }}"
           loop_control: {label: "{{ item | regex_search('<name>[^<]+') | replace('<name>', '') }}"}
           register: run_cfg
 
@@ -181,7 +271,7 @@
           ansible.netcommon.netconf_get:
             source: candidate
             filter: "{{ item }}"
-          loop: "{{ diff_filters | unique }}"
+          loop: "{{ diff_filters }}"
           loop_control: {label: "{{ item | regex_search('<name>[^<]+') | replace('<name>', '') }}"}
           register: cand_cfg
 
@@ -216,7 +306,7 @@
         # ---------------------------------------------------------------- 7. confirmed commit
         - name: "7. Persist id for this run"
           ansible.builtin.set_fact:
-            persist_id: "cutover-{{ link }}-{{ phase }}-{{ inventory_hostname }}-{{ lookup('ansible.builtin.pipe', 'date +%s%N') }}"
+            persist_id: "uplift-{{ site }}-{{ my_links | join('') }}-{{ phase }}-{{ inventory_hostname }}-{{ lookup('ansible.builtin.pipe', 'date +%s%N') }}"
 
         - name: "7. <commit><confirmed/> confirm-timeout {{ confirm_timeout }}s"
           ansible.netcommon.netconf_rpc:
@@ -236,7 +326,7 @@
           ansible.builtin.debug:
             msg: >-
               confirmed commit at {{ committed_at }}; {{ ('persist-id ' ~ persist_id) if persist_commit | bool
-              else 'no persist (tied to this NETCONF session)' }}; auto-rollback in {{ confirm_timeout }}s unless confirmed"
+              else 'no persist (tied to this NETCONF session)' }}; auto-rollback in {{ confirm_timeout }}s unless confirmed
 
         - name: "7. Pause after commit (test knob)"
           ansible.builtin.wait_for:
@@ -244,36 +334,90 @@
           when: pause_after_commit | int > 0
 
         # ---------------------------------------------------------------- 8. verify
-        - name: "8. Wait for IS-IS adjacency on {{ active_sub }}"
+        - name: "8. Adjacencies that must be up after this phase"
+          ansible.builtin.set_fact:
+            must_be_up: >-
+              {{ (ensure_subs
+                  + (new_subs if phase == 'decom' and not skip_decom_checks | bool else [])
+                  + (old_subs if phase == 'turnup' and old_was_up else [])) | unique }}
+
+        - name: "8. Wait for IS-IS adjacency on {{ must_be_up | join(', ') }}"
           ansible.netcommon.netconf_get:
             filter: "{{ adj_filter }}"
           register: adj_after
-          until: (adj_after.stdout | isis_adjacencies).get(active_sub) == 'up'
+          until: must_be_up | difference(adj_after.stdout | adj_up) | length == 0
           retries: "{{ (adjacency_wait | int / 2) | int }}"
           delay: 2
 
-        - name: "8. Recheck other uplink ({{ other_link }}) on {{ site_router }}"
+        - name: "8. Recheck the other VLAN (uplink {{ other_link }}) of {{ site }}"
           ansible.builtin.assert:
             that: other_up | length > 0
-            fail_msg: "uplink {{ other_link }} lost its IS-IS adjacency during the change ({{ adjs }})"
+            fail_msg: "uplink {{ other_link }} of {{ site }} lost its IS-IS adjacency during the change"
             success_msg: "uplink {{ other_link }} still up on {{ other_up }}"
           vars:
-            adjs: "{{ adj_after.stdout | isis_adjacencies }}"
-            o: "{{ uplinks[other_link] }}"
             other_up: >-
-              {{ [o.old_port ~ '.' ~ o.vlan, o.new_port ~ '.' ~ o.vlan]
-                 | select('in', adjs | dict2items | selectattr('value', 'eq', 'up') | map(attribute='key'))
-                 | list }}
-          when: inventory_hostname == site_router
+              {{ ((su | site_subs([other_link], 'old')) + (su | site_subs([other_link], 'new'))
+                  + (su | site_subs([other_link], 'homed'))) | unique | select('in', adj_after.stdout | adj_up) | list }}
+          when: phase.startswith('rehome') and inventory_hostname == site
+
+        - name: "8. Traffic check"
+          ansible.builtin.include_tasks: tasks/measure.yml
+          vars: {measure_label: "8. post-{{ phase }} traffic"}
+          when: phase == 'swing' or (phase == 'turnup' and turnup_metric != 'normal')
+
+        # turnup: the new circuits must attract nothing; the old ones, if they were up, must still carry the site
+        - name: "8. Turnup: new circuits idle on every end, old circuits still carrying traffic"
+          ansible.builtin.assert:
+            that:
+              - new_busy | length == 0
+              - not old_up_all_ends or old_total | float >= circuit_busy_pps | float
+            fail_msg: >-
+              turnup check failed: new circuit out-pps {{ new_rates }} (each must be <= {{ circuit_idle_pps }}),
+              old circuit out-pps {{ old_rates }} (sum must be >= {{ circuit_busy_pps }})
+            success_msg: "new circuits idle {{ new_rates }}; old circuits carrying {{ old_rates }}"
+          vars:
+            new_rates: >-
+              {{ ansible_play_hosts | end_rates(ansible_play_hosts | map('extract', hostvars, 'pps') | list,
+                                                ansible_play_hosts | map('extract', hostvars, 'new_subs') | list) }}
+            old_rates: >-
+              {{ ansible_play_hosts | end_rates(ansible_play_hosts | map('extract', hostvars, 'pps') | list,
+                                                ansible_play_hosts | map('extract', hostvars, 'old_subs') | list) }}
+            new_busy: "{{ new_rates | dict2items | selectattr('value', 'gt', circuit_idle_pps | float) | list }}"
+            old_total: "{{ old_rates.values() | sum }}"
+            old_up_all_ends: >-
+              {{ ansible_play_hosts | map('extract', hostvars, 'old_was_up') | select | list | length
+                 == ansible_play_hosts | length }}
+          when: phase == 'turnup' and turnup_metric != 'normal'
+
+        # swing: the old circuits must drop to ~0 on every end and the new ones must carry the site's traffic
+        - name: "8. Swing: old circuits idle on every end, new circuits carrying traffic"
+          ansible.builtin.assert:
+            that:
+              - old_busy | length == 0
+              - new_total | float >= circuit_busy_pps | float
+            fail_msg: >-
+              swing check failed: old circuit out-pps {{ old_rates }} (each must be <= {{ circuit_idle_pps }}),
+              new circuit out-pps {{ new_rates }} (sum must be >= {{ circuit_busy_pps }})
+            success_msg: "old circuits idle {{ old_rates }}; new circuits carrying {{ new_rates }}"
+          vars:
+            new_rates: >-
+              {{ ansible_play_hosts | end_rates(ansible_play_hosts | map('extract', hostvars, 'pps') | list,
+                                                ansible_play_hosts | map('extract', hostvars, 'new_subs') | list) }}
+            old_rates: >-
+              {{ ansible_play_hosts | end_rates(ansible_play_hosts | map('extract', hostvars, 'pps') | list,
+                                                ansible_play_hosts | map('extract', hostvars, 'old_subs') | list) }}
+            old_busy: "{{ old_rates | dict2items | selectattr('value', 'gt', circuit_idle_pps | float) | list }}"
+            new_total: "{{ new_rates.values() | sum }}"
+          when: phase == 'swing'
 
         - name: "8. Checks passed on this node"
           ansible.builtin.set_fact:
             checks_passed: true
 
-        - name: "8. Both ends must pass before either end confirms"
+        - name: "8. Every node must pass before any node confirms"
           ansible.builtin.assert:
             that: hostvars[item].checks_passed | default(false)
-            fail_msg: "{{ item }} did not pass its checks - not confirming on either end"
+            fail_msg: "{{ item }} did not pass its checks - not confirming on any node"
             quiet: true
           loop: "{{ ansible_play_hosts_all }}"
 
@@ -296,7 +440,7 @@
 
         - name: "9. Done"
           ansible.builtin.debug:
-            msg: "CONFIRMED link {{ link }} phase {{ phase }} at {{ now(fmt='%H:%M:%S.%f') }}"
+            msg: "CONFIRMED site {{ site }} uplink(s) {{ my_links | join('+') }} phase {{ phase }} at {{ now(fmt='%H:%M:%S.%f') }}"
 
       rescue:
         - name: "RESCUE: <cancel-commit> (roll back now, do not wait for the timer)"
@@ -325,7 +469,7 @@
         - name: "RESCUE: FAILED"
           ansible.builtin.fail:
             msg: >-
-              CUTOVER FAILED on {{ inventory_hostname }} at task '{{ ansible_failed_task.name | default('?') }}':
+              {{ phase | upper }} FAILED on {{ inventory_hostname }} at task '{{ ansible_failed_task.name | default('?') }}':
               {{ ansible_failed_result.msg | default(ansible_failed_result) | string | regex_replace('\s+', ' ') | truncate(400) }}.
               {{ 'Commit was cancelled - running is back to the pre-change config.'
                  if committed | default(false) and not confirmed | default(false)

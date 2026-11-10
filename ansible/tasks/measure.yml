@@ -1,0 +1,33 @@
+---
+# Measure out-pps on every subinterface of this node: two counter reads traffic_sample_secs apart.
+# Sets fact `pps` = {subinterface: out-pps}. Runs on all hosts of the play in parallel.
+- name: "{{ measure_label }}: settle {{ traffic_settle_secs }}s"
+  ansible.builtin.wait_for:
+    timeout: "{{ traffic_settle_secs | int }}"
+  when: measure_settle | default(true) | bool
+
+- name: "{{ measure_label }}: read counters (1/2)"
+  ansible.netcommon.netconf_get:
+    filter: "{{ counters_filter }}"
+  register: cnt0
+
+- name: "{{ measure_label }}: t0"
+  ansible.builtin.set_fact:
+    cnt_t0: "{{ lookup('ansible.builtin.pipe', 'date +%s.%N') }}"
+
+- name: "{{ measure_label }}: sample {{ traffic_sample_secs }}s"
+  ansible.builtin.wait_for:
+    timeout: "{{ traffic_sample_secs | int }}"
+
+- name: "{{ measure_label }}: read counters (2/2)"
+  ansible.netcommon.netconf_get:
+    filter: "{{ counters_filter }}"
+  register: cnt1
+
+- name: "{{ measure_label }}: out-pps per subinterface"
+  ansible.builtin.set_fact:
+    pps: "{{ cnt0.stdout | out_pps(cnt1.stdout, lookup('ansible.builtin.pipe', 'date +%s.%N') | float - cnt_t0 | float) }}"
+
+- name: "{{ measure_label }}: result"
+  ansible.builtin.debug:
+    msg: "{{ pps | dict2items | selectattr('key', 'in', old_subs + new_subs + homed_subs) | items2dict }}"

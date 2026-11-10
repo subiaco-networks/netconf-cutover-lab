@@ -7,7 +7,7 @@ WANT = ["urn:ietf:params:netconf:capability:candidate:1.0",
         "urn:ietf:params:netconf:capability:validate:1.1",
         "urn:ietf:params:netconf:capability:rollback-on-error:1.0",
         "urn:ietf:params:netconf:base:1.1"]
-for host in sys.argv[1:] or ["172.30.40.11", "172.30.40.21", "172.30.40.22"]:
+for host in sys.argv[1:] or ["172.30.40.11", "172.30.40.12", "172.30.40.21", "172.30.40.22"]:
     with manager.connect(host=host, port=830, username="ansible", password="Ansible123!",
                          hostkey_verify=False, look_for_keys=False, allow_agent=False) as m:
         caps = list(m.server_capabilities)

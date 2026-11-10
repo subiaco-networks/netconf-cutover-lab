@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
-"""Run the cutover test scenarios with continuous traffic and record packet loss.
+"""Run the uplift test scenarios with continuous traffic and record packet loss.
 
 Run on the lab server with the venv python:
     ~/nokia_lab/cutover-venv/bin/python bin/cutover_test.py <scenario> [...]
-Scenarios: paths  full  nodrain  rescue-wrong-port  rescue-far-end-shut  kill  reset
+Scenarios: reset  paths  full-uplift  mbb-N  bbm-N  decom-without-swing  new-fiber-dark  swing-before-turnup
 
-Traffic: 8 ping flows h1 (10.10.1.2-9) -> h2 (10.20.1.2), 10 ms interval each (800 pps total).
-Using 8 source addresses spreads the flows over both ECMP uplinks in both directions.
-Loss per flow = transmitted - received (iputils summary). Each lost packet is placed in time
-from its sequence number and attributed to the playbook step that was running then.
+Traffic: 8 ping flows h1 (10.10.1.2-9, behind csr1, the site being changed) and 4 flows h3 (10.10.2.2-5, behind
+csr2, a bystander site muxed onto the same MTSO fibers) -> h2 (10.20.1.2), ping -i 0.01 each.
+A lost packet is a sequence number with replies on both sides of it; it is placed in time from the replies around
+it and attributed to the playbook step that was running then. Packets still in flight when ping is stopped are
+not counted. After every step the out-pps of every uplink subinterface is sampled: that is the evidence of which
+circuit carries the traffic at each step.
 """
-import json, os, re, signal, subprocess, sys, time
+import json, os, re, subprocess, sys, time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 ANS = HERE / "ansible"
 RES = HERE / "results"
 VENV = Path.home() / "nokia_lab/cutover-venv/bin"
-SRCS = [f"10.10.1.{i}" for i in range(2, 10)]
 DST = "10.20.1.2"
 INTERVAL = 0.01
-H1 = "clab-cutover-h1"
+FLOWS = {"csr1": ("clab-cutover-h1", [f"10.10.1.{i}" for i in range(2, 10)]),
+         "csr2": ("clab-cutover-h3", [f"10.10.2.{i}" for i in range(2, 6)])}
+NODES = ["csr1", "csr2", "agg-01", "agg-02"]
+SAMPLE = 11          # s between counter reads (SR Linux refreshes these counters about every 5 s)
 
 
 def sh(cmd, check=True, **kw):
@@ -33,48 +38,51 @@ def now():
 
 # ------------------------------------------------------------------ traffic
 def ping_start():
-    sh(f"docker exec {H1} sh -c 'pkill -INT ping; rm -f /tmp/p*.log'", check=False)
-    for s in SRCS:
-        n = s.split(".")[-1]
-        sh(f"docker exec -d {H1} sh -c 'exec ping -D -i {INTERVAL} -W 1 -I {s} {DST} > /tmp/p{n}.log 2>&1'")
+    for site, (host, srcs) in FLOWS.items():
+        sh(f"docker exec {host} sh -c 'pkill -INT ping; rm -f /tmp/p*.log'", check=False)
+        for s in srcs:
+            n = s.split(".")[-1]
+            sh(f"docker exec -d {host} sh -c 'exec ping -D -i {INTERVAL} -W 1 -I {s} {DST} > /tmp/p{n}.log 2>&1'")
     time.sleep(2)
     return now()
 
 
 def ping_stop():
     time.sleep(3)  # let trailing replies arrive
-    sh(f"docker exec {H1} pkill -INT ping", check=False)
+    for host, _ in FLOWS.values():
+        sh(f"docker exec {host} pkill -INT ping", check=False)
     time.sleep(1.5)
     flows = {}
-    for s in SRCS:
-        log = sh(f"docker exec {H1} cat /tmp/p{s.split('.')[-1]}.log").stdout
-        m = re.search(r"(\d+) packets transmitted, (\d+) received", log)
-        tx, rx = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
-        got = {}
-        for ts, seq in re.findall(r"\[(\d+\.\d+)\] \d+ bytes from .*icmp_seq=(\d+)", log):
-            got[int(seq)] = float(ts)
-        # place each lost packet in time by interpolating between the replies around it
-        # (iputils does not hold the 10 ms interval exactly, so do not assume it)
-        seqs = sorted(got)
-        missing, longest = [], 0.0
-        for a, b in zip(seqs, seqs[1:]):
-            if b - a > 1:
-                step = (got[b] - got[a]) / (b - a)
-                missing += [got[a] + step * k for k in range(1, b - a)]
-                longest = max(longest, got[b] - got[a])
-        # packets sent after the last reply were still in flight when ping got SIGINT: iputils counts them
-        # as lost, but they are a stop artefact, not loss. Report them separately and do not count them.
-        inflight = tx - seqs[-1] if seqs else 0
-        dur = (got[seqs[-1]] - got[seqs[0]]) if len(seqs) > 1 else 0
-        flows[s] = {"tx": tx - inflight, "rx": rx, "lost": len(missing), "inflight_at_stop": inflight,
-                    "longest_gap_ms": round(longest * 1000) if longest else 0,
-                    "pps": round(rx / dur, 1) if dur else 0, "secs": round(dur, 1), "lost_at": missing}
+    for site, (host, srcs) in FLOWS.items():
+        for s in srcs:
+            log = sh(f"docker exec {host} cat /tmp/p{s.split('.')[-1]}.log").stdout
+            m = re.search(r"(\d+) packets transmitted, (\d+) received", log)
+            tx, rx = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+            got = {}
+            for ts, seq in re.findall(r"\[(\d+\.\d+)\] \d+ bytes from .*icmp_seq=(\d+)", log):
+                got[int(seq)] = float(ts)
+            seqs = sorted(got)
+            missing, longest = [], 0.0
+            for a, b in zip(seqs, seqs[1:]):
+                if b - a > 1:
+                    step = (got[b] - got[a]) / (b - a)
+                    missing += [got[a] + step * k for k in range(1, b - a)]
+                    longest = max(longest, got[b] - got[a])
+            # packets sent after the last reply were in flight when ping got SIGINT: a stop artefact, not loss
+            inflight = tx - seqs[-1] if seqs else 0
+            sent = tx - inflight
+            dur = (got[seqs[-1]] - got[seqs[0]]) if len(seqs) > 1 else 0
+            flows[s] = {"site": site, "sent": sent, "delivered": len(got), "lost": sent - len(got),
+                        "gap_lost": len(missing), "inflight_at_stop": inflight,
+                        "longest_gap_ms": round(longest * 1000) if longest else 0,
+                        "pps": round(len(got) / dur, 1) if dur else 0, "secs": round(dur, 1), "lost_at": missing}
     return flows
 
 
 # ------------------------------------------------------------------ ansible
-def playbook(link, phase, *extra, log=None, timeout=600):
-    args = " ".join(["-e", f"link={link}", "-e", f"phase={phase}", "-e", "apply_change=true", *extra])
+def playbook(site, phase, *extra, link=None, log=None, timeout=900):
+    args = " ".join(["-e", f"site={site}", "-e", f"phase={phase}", "-e", "apply_change=true",
+                     *(["-e", f"link={link}"] if link else []), *extra])
     cmd = f"cd {ANS} && PYTHONUNBUFFERED=1 {VENV}/ansible-playbook uplink_cutover.yml {args}"
     t0 = now()
     p = subprocess.run(cmd, shell=True, text=True, capture_output=True, timeout=timeout,
@@ -82,89 +90,138 @@ def playbook(link, phase, *extra, log=None, timeout=600):
     t1 = now()
     if log is not None:
         log.write(f"\n===== ansible-playbook {args}  (rc={p.returncode}, {t1 - t0:.1f}s)\n{p.stdout}{p.stderr}")
-    recap = re.findall(r"^(\S+)\s+: ok=.*$", p.stdout, re.M)
-    return {"step": f"{phase} {link} {' '.join(extra)}".strip(), "rc": p.returncode, "start": t0, "end": t1,
-            "secs": round(t1 - t0, 1), "recap": re.findall(r"^\S+\s+: ok=.*$", p.stdout, re.M)}
+        log.flush()
+    why = re.findall(r"(REFUSED:.*|STOP:.*|\w+ FAILED on \S+ at task '[^']*')", p.stdout)
+    label = f"{site} {link + ' ' if link else ''}{phase} {' '.join(x for x in extra if x != '-e')}".strip()
+    return {"step": label, "rc": p.returncode, "start": t0, "end": t1, "secs": round(t1 - t0, 1),
+            "why": sorted(set(w.strip()[:300] for w in why))}
 
 
 def srl(node, cmd):
     return sh(f"docker exec clab-cutover-{node} sr_cli -d \"{cmd}\"", check=False).stdout
 
 
-def adjacencies(node="csr1"):
-    out = srl(node, "show network-instance default protocols isis adjacency")
-    rows = [[c.strip() for c in l.strip().strip("|").split("|")] for l in out.splitlines() if l.startswith("| ethernet")]
-    return [(r[0], r[5]) for r in rows if len(r) > 5]
+MGMT = {"csr1": "172.30.40.11", "csr2": "172.30.40.12", "agg-01": "172.30.40.21", "agg-02": "172.30.40.22"}
+ADJ_FLT = ('<network-instance xmlns="urn:nokia.com:srlinux:net-inst:network-instance"><name>default</name><protocols>'
+           '<isis xmlns="urn:nokia.com:srlinux:isis:isis"><instance><name>i1</name><interface><interface-name/>'
+           '<adjacency><state/></adjacency></interface></instance></isis></protocols></network-instance>')
+
+
+def adjacencies(node):
+    """[(subinterface, state)] over NETCONF (the CLI table truncates long interface names)."""
+    from ncclient import manager
+    ns = "{urn:nokia.com:srlinux:isis:isis}"
+    with manager.connect(host=MGMT[node], port=830, username="ansible", password="Ansible123!", hostkey_verify=False,
+                         look_for_keys=False, allow_agent=False, timeout=30) as m:
+        root = m.get(filter=("subtree", ADJ_FLT)).data_ele
+    return sorted((i.findtext(f"{ns}interface-name"), a.findtext(f"{ns}state"))
+                  for i in root.iter(f"{ns}interface") for a in i.findall(f"{ns}adjacency"))
+
+
+def metrics(node):
+    out = srl(node, "info flat network-instance default protocols isis instance i1 interface * level 2 metric")
+    return dict(re.findall(r"interface (\S+) level 2 metric (\d+)", out))
+
+
+# ------------------------------------------------------------------ circuit evidence
+def _counters(node):
+    out = srl(node, "info flat from state interface ethernet-1/* subinterface * statistics out-packets")
+    return {f"{p}.{s}": int(v) for p, s, v in
+            re.findall(r"interface (ethernet-1/1{1,2}) subinterface (\d+) statistics out-packets (\d+)", out)}
+
+
+def circuit_rates(label):
+    """out-pps of every uplink subinterface on every node, over SAMPLE seconds."""
+    with ThreadPoolExecutor(4) as ex:
+        a = dict(zip(NODES, ex.map(_counters, NODES)))
+        t0 = now()
+        time.sleep(SAMPLE)
+        b = dict(zip(NODES, ex.map(_counters, NODES)))
+        t1 = now()
+    rates = {}
+    for n in NODES:
+        for k, v in b[n].items():
+            if k in a[n]:
+                rates[f"{n} {k}"] = round((v - a[n][k]) / (t1 - t0))
+    return {"after": label, "t": t1, "pps": rates}
+
+
+def fmt_rates(snap):
+    # VLAN 1xx = csr1 site, 2xx = csr2 site; x0x = old circuit, x1x = new circuit; odd = to agg-01, even = to agg-02
+    keys = sorted(snap["pps"], key=lambda k: (k.split(".")[-1], k))
+    return f"  after {snap['after']}:\n" + "\n".join(
+        "     " + "  ".join(f"{k.replace('ethernet-', 'e')}={snap['pps'][k]:>4}" for k in keys[i:i + 4])
+        for i in range(0, len(keys), 4))
 
 
 # ------------------------------------------------------------------ reporting
 def attribute(flows, steps):
-    per_step = {s["step"]: 0 for s in steps}
-    outside = 0
+    per_step = {s["step"]: {"csr1": 0, "csr2": 0} for s in steps}
+    outside = {"csr1": 0, "csr2": 0}
     for f in flows.values():
         for t in f["lost_at"]:
             for s in steps:
                 if s["start"] - 0.5 <= t <= s["end"] + 0.5:
-                    per_step[s["step"]] += 1
+                    per_step[s["step"]][f["site"]] += 1
                     break
             else:
-                outside += 1
+                outside[f["site"]] += 1
     return per_step, outside
 
 
-def report(name, flows, steps, notes=(), paths=None):
-    tx = sum(f["tx"] for f in flows.values()); lost = sum(f["lost"] for f in flows.values())
+def totals(flows, site):
+    fs = [f for f in flows.values() if f["site"] == site]
+    return sum(f["sent"] for f in fs), sum(f["delivered"] for f in fs), sum(f["lost"] for f in fs)
+
+
+def report(name, flows, steps, snaps=(), notes=(), paths=None):
     per_step, outside = attribute(flows, steps)
-    lines = [f"# {name}", f"run at {time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
-             f"TOTAL: {lost} lost of {tx} sent ({100 * lost / tx if tx else 0:.4f}%) across {len(flows)} flows, "
-             f"ping -i {INTERVAL} each (measured {sum(f.get('pps', 0) for f in flows.values()) or float('nan'):.0f} pps aggregate)",
-             "a 'gap' is the time between the replies either side of the lost packets;",
-             "packets still in flight when ping is stopped are excluded from tx and lost", "", "## steps"]
+    lines = [f"# {name}", f"run at {time.strftime('%Y-%m-%d %H:%M:%S %Z')}"]
+    for site, role in (("csr1", "site being changed"), ("csr2", "bystander site, same MTSO fibers")):
+        s, d, l = totals(flows, site)
+        lines.append(f"{site} ({role}): sent {s:,}, delivered {d:,} (lost {l:,})  "
+                     f"[{len(FLOWS[site][1])} flows, ping -i {INTERVAL}]")
+    lines += ["lost = sent - delivered; packets still in flight when ping was stopped are not counted as sent",
+              "", "## steps (lost packets placed in each step's time window: csr1 / csr2)"]
     for s in steps:
-        lines.append(f"  {s['step']:<55} rc={s['rc']}  {s['secs']:>6}s  lost={per_step[s['step']]}")
-    if outside:
-        lines.append(f"  (lost outside any step window: {outside})")
+        ps = per_step[s["step"]]
+        lines.append(f"  {s['step']:<62} rc={s['rc']:<3} {s['secs']:>6}s  lost {ps['csr1']} / {ps['csr2']}")
+        for w in s.get("why", []):
+            lines.append(f"      -> {w}")
+    if any(outside.values()):
+        lines.append(f"  (lost outside any step window: {outside['csr1']} / {outside['csr2']})")
+    if snaps:
+        lines += ["", "## out-pps per uplink subinterface after each step (evidence of which circuit carries traffic)",
+                  "   VLAN 101/102 csr1 old, 111/112 csr1 new, 201/202 csr2 old, 211/212 csr2 new"]
+        lines += [fmt_rates(sn) for sn in snaps]
     lines += ["", "## flows"]
     for src, f in flows.items():
         p = paths.get(src, {}) if paths else {}
-        lines.append(f"  {src} -> {DST}: tx={f['tx']} rx={f['rx']} lost={f['lost']} longest_gap={f['longest_gap_ms']}ms ({f.get('pps', '?')} pps over {f.get('secs', '?')}s, {f.get('inflight_at_stop', 0)} in flight at stop - not counted)"
-                     + (f"   path fwd=uplink-{p.get('fwd','?')} rev=uplink-{p.get('rev','?')}" if p else ""))
+        lines.append(f"  {f['site']} {src} -> {DST}: sent {f['sent']}, delivered {f['delivered']} (lost {f['lost']})"
+                     f", longest gap {f['longest_gap_ms']} ms, {f['pps']} pps over {f['secs']} s"
+                     f", {f['inflight_at_stop']} in flight at stop"
+                     + (f"  [fwd via uplink-{p.get('fwd', '?')}, return via uplink-{p.get('rev', '?')}]" if p else ""))
     lines += ["", *notes]
     text = "\n".join(lines) + "\n"
     (RES / f"{name}.txt").write_text(text)
-    (RES / f"{name}.json").write_text(json.dumps({"flows": flows, "steps": steps}, indent=1))
+    (RES / f"{name}.json").write_text(json.dumps({"flows": flows, "steps": steps, "circuit_pps": list(snaps)}, indent=1))
     print(text)
-    return lost
 
 
 # ------------------------------------------------------------------ path mapping
-def counters():
-    c = {}
-    for node, intf, sub in [("csr1", "ethernet-1/1", 100), ("csr1", "ethernet-1/11", 100),
-                            ("csr1", "ethernet-1/2", 200), ("csr1", "ethernet-1/12", 200),
-                            ("agg-01", "ethernet-1/1", 100), ("agg-01", "ethernet-1/11", 100),
-                            ("agg-02", "ethernet-1/1", 200), ("agg-02", "ethernet-1/11", 200)]:
-        out = srl(node, f"info from state interface {intf} subinterface {sub} statistics out-packets")
-        m = re.search(r"out-packets (\d+)", out)
-        c[(node, intf)] = int(m.group(1)) if m else 0
-    return c
-
-
 def paths():
-    """Which uplink each flow takes, forward (csr1 egress) and reverse (agg egress toward csr1)."""
+    """Which VLAN each csr1 flow takes: forward = csr1 egress, return = agg egress toward csr1 (old circuits)."""
     res = {}
-    for s in SRCS:
-        a = counters()
-        sh(f"docker exec {H1} ping -q -i 0.002 -c 500 -I {s} {DST}", check=False)
-        time.sleep(4)
-        b = counters()
-        d = {k: b[k] - a[k] for k in a}
-        fwd_a = d[("csr1", "ethernet-1/1")] + d[("csr1", "ethernet-1/11")]
-        fwd_b = d[("csr1", "ethernet-1/2")] + d[("csr1", "ethernet-1/12")]
-        rev_a = d[("agg-01", "ethernet-1/1")] + d[("agg-01", "ethernet-1/11")]
-        rev_b = d[("agg-02", "ethernet-1/1")] + d[("agg-02", "ethernet-1/11")]
-        res[s] = {"fwd": "a" if fwd_a > fwd_b else "b", "rev": "a" if rev_a > rev_b else "b",
-                  "counts": [fwd_a, fwd_b, rev_a, rev_b]}
+    host, srcs = FLOWS["csr1"]
+    for s in srcs:
+        a = {n: _counters(n) for n in ("csr1", "agg-01", "agg-02")}
+        sh(f"docker exec {host} ping -q -i 0.002 -c 500 -I {s} {DST}", check=False)
+        time.sleep(8)       # > one counter refresh
+        b = {n: _counters(n) for n in ("csr1", "agg-01", "agg-02")}
+        d = lambda n, k: b[n].get(k, 0) - a[n].get(k, 0)
+        fa, fb = d("csr1", "ethernet-1/1.101"), d("csr1", "ethernet-1/1.102")
+        ra, rb = d("agg-01", "ethernet-1/1.101"), d("agg-02", "ethernet-1/1.102")
+        res[s] = {"fwd": "a" if fa > fb else "b", "rev": "a" if ra > rb else "b", "counts": [fa, fb, ra, rb]}
     (RES / "paths.json").write_text(json.dumps(res, indent=1))
     return res
 
@@ -176,118 +233,106 @@ def load_paths():
 
 # ------------------------------------------------------------------ scenarios
 def reset(log):
-    """Back to the original ports at normal metric on both links (no traffic measured)."""
-    for link in "ab":
-        r = playbook(link, "baseline", "-e", "discard_stale_candidate=true", log=log)
+    """Both sites back to the old fibers at normal metric (no traffic measured)."""
+    for site in ("csr1", "csr2"):
+        r = playbook(site, "baseline", "-e", "discard_stale_candidate=true", log=log)
         if r["rc"]:
-            sys.exit(f"reset of link {link} failed, see log")
+            sys.exit(f"reset of {site} failed, see log")
     time.sleep(15)
-    print("reset done; csr1 adjacencies:", adjacencies())
+    print("reset done; csr1 adjacencies:", adjacencies("csr1"), "csr2:", adjacencies("csr2"))
+
+
+def run_steps(name, plan, log, notes=(), settle=5, snap_between=True):
+    """plan = list of (site, phase, link, extra...) run in order with traffic; snapshot circuits after each step
+    (snap_between=False: only after the last step, so the steps run back to back)."""
+    reset(log)
+    steps, snaps = [], []
+    ping_start()
+    snaps.append(circuit_rates("start (baseline)"))
+    for i, (site, phase, link, *extra) in enumerate(plan):
+        steps.append(playbook(site, phase, *extra, link=link, log=log))
+        if snap_between or i == len(plan) - 1:
+            time.sleep(settle)
+            snaps.append(circuit_rates(steps[-1]["step"] + f" (rc={steps[-1]['rc']})"))
+    flows = ping_stop()
+    report(name, flows, steps, snaps, paths=load_paths(), notes=[
+        *notes, f"final csr1 adjacencies: {adjacencies('csr1')}", f"final csr1 IS-IS metrics: {metrics('csr1')}",
+        f"final csr2 adjacencies: {adjacencies('csr2')}"])
+    return steps
+
+
+MBB = [("csr1", "turnup", None), ("csr1", "swing", None), ("csr1", "decom", None)]
+BBM = [("csr1", "decom", None, "-e", "skip_decom_checks=true"),
+       ("csr1", "turnup", None, "-e", "turnup_metric=normal")]
+
+
+def telco_port(port, state):
+    sh(f"docker exec clab-cutover-telco ip link set {port} {state}")
 
 
 def scenario(name):
     RES.mkdir(exist_ok=True)
     log = open(RES / f"{name}.ansible.log", "w")
-    pmap = load_paths()
     if name == "paths":
-        r = paths(); print(json.dumps(r, indent=1)); return
+        reset(log)
+        print(json.dumps(paths(), indent=1)); return
     if name == "reset":
         reset(log); return
 
-    if name == "full":
-        reset(log)
-        steps = []
-        ping_start()
-        for link in "ab":
-            for phase in ("drain", "cut", "restore"):
-                steps.append(playbook(link, phase, log=log))
-                time.sleep(5)   # let IS-IS settle and traffic rebalance between steps
-        flows = ping_stop()
-        return report(name, flows, steps, paths=pmap,
-                      notes=[f"final csr1 adjacencies: {adjacencies()}"])
+    if name == "full-uplift":
+        plan = [*MBB, ("csr2", "turnup", None), ("csr2", "swing", None), ("csr2", "decom", None)]
+        for site in ("csr1", "csr2"):
+            for link in "ab":
+                plan += [(site, "rehome-drain", link), (site, "rehome-cut", link), (site, "rehome-restore", link)]
+        return run_steps(name, plan, log, notes=[
+            "csr1 turnup -> swing -> decom, then csr2 the same; then re-home csr1 VLAN a, csr1 VLAN b, csr2 a, csr2 b",
+            "(drain -> cut -> restore each) from ethernet-1/11 back onto ethernet-1/1."])
 
-    if name.startswith("nodrain"):
-        reset(log)
-        steps = []
-        ping_start()
-        steps.append(playbook("a", "cut", "-e", "skip_drain=true", log=log))
-        time.sleep(5)
-        flows = ping_stop()
-        return report(name, flows, steps, paths=pmap,
-                      notes=["cut of uplink A from ethernet-1/1 to ethernet-1/11 at normal metric, NO drain first",
-                             f"final csr1 adjacencies: {adjacencies()}"])
+    if name.startswith("mbb"):
+        return run_steps(name, MBB, log, notes=["make-before-break on csr1: turnup -> swing -> decom"])
 
-    if name.startswith("drained-cut"):
-        # same single move as nodrain, but drained first; only the cut itself is the comparable step
-        reset(log)
-        steps = []
-        ping_start()
-        steps.append(playbook("a", "drain", log=log)); time.sleep(5)
-        steps.append(playbook("a", "cut", log=log)); time.sleep(5)
-        flows = ping_stop()
-        return report(name, flows, steps, paths=pmap,
-                      notes=["drain then cut of uplink A (restore not run)", f"final csr1 adjacencies: {adjacencies()}"])
+    if name.startswith("bbm"):
+        return run_steps(name, BBM, log, snap_between=False, notes=[
+            "break-before-make on csr1 (lab knobs): remove the old circuits first (skip_decom_checks),",
+            "then turn the new ones up straight at metric 10 (turnup_metric=normal), back to back with no pause.",
+            "The outage is decom commit -> turnup run -> adjacencies up -> SPF: the fastest 'move the fiber' this lab",
+            "can do. A real break-before-make adds the time to physically move the fiber."])
 
-    if name == "rescue-wrong-port":
-        reset(log)
-        steps = []
-        ping_start()
-        steps.append(playbook("a", "drain", log=log)); time.sleep(5)
-        steps.append(playbook("a", "cut", "-e", "'{\"port_override\": {\"csr1\": \"ethernet-1/12\"}}'", log=log))
-        time.sleep(5)
-        flows = ping_stop()
-        cfg = srl("csr1", "info flat network-instance default protocols isis instance i1 interface * level 2 metric")
-        return report(name, flows, steps, paths=pmap, notes=[
-            "csr1 cut to the WRONG port (ethernet-1/12, cabled to agg-02 e1-11) while agg-01 moved to e1-11 correctly.",
-            "Expected: adjacency never comes up -> rescue cancel-commit on both ends -> back to drained e1-1.",
-            f"csr1 IS-IS metrics after: {cfg.strip()}", f"csr1 adjacencies after: {adjacencies()}"])
+    if name == "decom-without-swing":
+        return run_steps(name, [("csr1", "turnup", None), ("csr1", "decom", None),
+                                ("csr1", "decom", None, "-e", "skip_decom_checks=true")], log, notes=[
+            "turnup, then decom while the old circuits still carry the site (expected: refused),",
+            "then the same decom with the guard skipped, to measure the loss the guard prevents."])
 
-    if name == "rescue-far-end-shut":
+    if name == "swing-before-turnup":
+        return run_steps(name, [("csr1", "swing", None)], log, notes=[
+            "swing straight from baseline, no turnup (expected: refused before anything is locked)."])
+
+    if name == "new-fiber-dark":
         reset(log)
-        steps = []
+        steps, snaps = [], []
         ping_start()
-        steps.append(playbook("a", "drain", log=log)); time.sleep(5)
-        sh("echo 'enter candidate private\nset / interface ethernet-1/11 admin-state disable\ncommit now' | "
-           "docker exec -i clab-cutover-agg-01 sr_cli -ed")
-        shut_state = (srl("agg-01", "info from state interface ethernet-1/11 admin-state oper-state").split()
-                      + ["| csr1 e1-11:"] + srl("csr1", "info from state interface ethernet-1/11 oper-state").split())
-        t = now(); steps.append({"step": "OOB: shut agg-01 ethernet-1/11 (far end)", "rc": 0, "start": t, "end": t + 1, "secs": 1, "recap": []})
-        steps.append(playbook("a", "cut", log=log)); time.sleep(5)
+        snaps.append(circuit_rates("start (baseline)"))
+        telco_port("eth2", "down")                       # the telco has not lit csr1's new fiber
+        time.sleep(2)
+        dark = srl("csr1", "info from state interface ethernet-1/11 oper-state").split()
+        t = now(); steps.append({"step": "OOB: telco eth2 (csr1 new fiber) down", "rc": 0, "start": t, "end": t + 1,
+                                 "secs": 1, "why": []})
+        steps.append(playbook("csr1", "turnup", log=log)); time.sleep(5)
+        snaps.append(circuit_rates(steps[-1]["step"] + f" (rc={steps[-1]['rc']})"))
         flows = ping_stop()
-        post = " ".join(srl("agg-01", "info interface ethernet-1/11 admin-state").split())
-        sh("echo 'enter candidate private\nset / interface ethernet-1/11 admin-state enable\ncommit now' | "
-           "docker exec -i clab-cutover-agg-01 sr_cli -ed")
-        cfg = srl("csr1", "info flat network-instance default protocols isis instance i1 interface * level 2 metric")
-        return report(name, flows, steps, paths=pmap, notes=[
-            "agg-01 ethernet-1/11 administratively shut out of band before the cut (simulates far end not patched / shut).",
-            "Expected: adjacency on e1-11.100 never comes up -> rescue cancel-commit on both ends.",
-            f"state right after the shut: agg-01 e1-11: {' '.join(shut_state)}",
-            f"agg-01 e1-11 admin-state after the cut attempt (before the test re-enables it): {post}",
-            f"csr1 IS-IS metrics after: {cfg.strip()}", f"csr1 adjacencies after: {adjacencies()}",
-            "agg-01 ethernet-1/11 re-enabled after the test."])
+        after = {n: metrics(n) for n in ("csr1", "agg-01", "agg-02")}
+        telco_port("eth2", "up")
+        return report(name, flows, steps, snaps, paths=load_paths(), notes=[
+            "telco port eth2 (far end of csr1 ethernet-1/11, the new fiber) taken down out of band before turnup.",
+            "Expected: no adjacency on the new circuits -> rescue cancel-commit on all three nodes, old circuits untouched.",
+            f"csr1 ethernet-1/11 after the telco shut: {' '.join(dark)}",
+            f"IS-IS metrics after the attempt: {after}",
+            f"csr1 adjacencies after: {adjacencies('csr1')}", "telco eth2 brought back up after the test."])
 
     sys.exit(f"unknown scenario {name}")
 
 
-def rereport(name):
-    """Re-apply the in-flight rule to a saved run: losses after the last step + 3 s are the ping stop artefact."""
-    d = json.loads((RES / f"{name}.json").read_text())
-    cutoff = max(st["end"] for st in d["steps"]) + 3
-    for f in d["flows"].values():
-        if "inflight_at_stop" not in f:
-            tail = [t for t in f["lost_at"] if t > cutoff]
-            f["lost_at"] = [t for t in f["lost_at"] if t <= cutoff]
-            f["inflight_at_stop"] = len(tail); f["lost"] = len(f["lost_at"]); f["tx"] -= len(tail)
-    txt = (RES / f"{name}.txt").read_text()
-    notes = txt.split("\n\n")[-1].strip().splitlines() if "\n\n" in txt else []
-    notes = [l for l in notes if not l.startswith("  ")]
-    report(name, d["flows"], d["steps"], notes=notes, paths=load_paths())
-
-
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["rereport"]:
-        for n in sys.argv[2:]:
-            rereport(n)
-        sys.exit()
-    for n in sys.argv[1:] or ["full"]:
+    for n in sys.argv[1:] or ["full-uplift"]:
         scenario(n)

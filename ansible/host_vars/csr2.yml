@@ -1,0 +1,12 @@
+uplinks:
+  csr2:
+    a:
+      peer: agg-01
+      home_port: ethernet-1/1
+      old: {port: ethernet-1/1,  vlan: 201, ip: 172.20.31.1/31}
+      new: {port: ethernet-1/11, vlan: 211, ip: 172.20.41.1/31}
+    b:
+      peer: agg-02
+      home_port: ethernet-1/1
+      old: {port: ethernet-1/1,  vlan: 202, ip: 172.20.32.1/31}
+      new: {port: ethernet-1/11, vlan: 212, ip: 172.20.42.1/31}

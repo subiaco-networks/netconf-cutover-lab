@@ -1,8 +1,12 @@
-# Uplink cutover lab: csr1 (site router) dual-homed to agg-01 / agg-02 over IS-IS.
-#   uplink A: csr1 e1-1 <-> agg-01 e1-1  VLAN 100   (spare / "new 10G": e1-11 <-> e1-11)
-#   uplink B: csr1 e1-2 <-> agg-02 e1-1  VLAN 200   (spare / "new 10G": e1-12 <-> e1-11)
-#   agg-01 e1-2 <-> agg-02 e1-2  inter-agg link (VLAN 300)
-#   h1 behind csr1, h2 dual-homed behind both aggs (ECMP default route)
+# Make-before-break uplift lab.
+#   Each cell-site router has ONE fiber to the telco carrying two VLANs: odd -> agg-01, even -> agg-02.
+#   The telco (an L2 VLAN-aware bridge) hands all odd VLANs to the MTSO on one fiber (agg-01 e1-1) and all
+#   even VLANs on another (agg-02 e1-1), so every site's uplinks are muxed onto the same two MTSO fibers.
+#   The new fiber for each site lands on csr e1-11 and on a new telco port; the MTSO side does not change.
+#
+#   csr1 e1-1  (old fiber)  VLAN 101 -> agg-01, 102 -> agg-02     new fiber csr1 e1-11: VLAN 111 / 112
+#   csr2 e1-1  (old fiber)  VLAN 201 -> agg-01, 202 -> agg-02     new fiber csr2 e1-11: VLAN 211 / 212
+#   agg-01 e1-2 <-> agg-02 e1-2 inter-agg (VLAN 300); h2 dual-homed behind both aggs (ECMP default route)
 name: cutover
 mgmt:
   network: cutover-mgmt
@@ -19,6 +23,10 @@ topology:
       kind: nokia_srlinux
       mgmt-ipv4: 172.30.40.11
       startup-config: configs/csr1.cfg
+    csr2:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.30.40.12
+      startup-config: configs/csr2.cfg
     agg-01:
       kind: nokia_srlinux
       mgmt-ipv4: 172.30.40.21
@@ -27,6 +35,23 @@ topology:
       kind: nokia_srlinux
       mgmt-ipv4: 172.30.40.22
       startup-config: configs/agg-02.cfg
+    telco:
+      # L2 mux: VLAN-aware bridge. Ports: eth1 csr1 old, eth2 csr1 new, eth3 csr2 old, eth4 csr2 new,
+      # eth5 MTSO fiber to agg-01 (odd VLANs), eth6 MTSO fiber to agg-02 (even VLANs).
+      # A site's new VLANs are provisioned on both its old and new port, so the later re-home onto the
+      # original port needs no telco change.
+      kind: linux
+      mgmt-ipv4: 172.30.40.31
+      exec:
+        - ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
+        - sh -c 'for i in 1 2 3 4 5 6; do ip link set eth$i master br0; ip link set eth$i up; done'
+        - ip link set br0 up
+        - sh -c 'for v in 101 102 111 112; do bridge vlan add dev eth1 vid $v; done'
+        - sh -c 'for v in 111 112; do bridge vlan add dev eth2 vid $v; done'
+        - sh -c 'for v in 201 202 211 212; do bridge vlan add dev eth3 vid $v; done'
+        - sh -c 'for v in 211 212; do bridge vlan add dev eth4 vid $v; done'
+        - sh -c 'for v in 101 111 201 211; do bridge vlan add dev eth5 vid $v; done'
+        - sh -c 'for v in 102 112 202 212; do bridge vlan add dev eth6 vid $v; done'
     h1:
       kind: linux
       mgmt-ipv4: 172.30.40.101
@@ -34,6 +59,13 @@ topology:
         - ip link set eth1 up
         - sh -c 'for i in 2 3 4 5 6 7 8 9; do ip addr add 10.10.1.$i/24 dev eth1; done'
         - ip route replace default via 10.10.1.1 dev eth1
+    h3:
+      kind: linux
+      mgmt-ipv4: 172.30.40.103
+      exec:
+        - ip link set eth1 up
+        - sh -c 'for i in 2 3 4 5; do ip addr add 10.10.2.$i/24 dev eth1; done'
+        - ip route replace default via 10.10.2.1 dev eth1
     h2:
       kind: linux
       mgmt-ipv4: 172.30.40.102
@@ -46,11 +78,14 @@ topology:
         - sysctl -w net.ipv4.fib_multipath_hash_policy=1
         - ip route replace default nexthop via 172.20.11.0 dev eth1 nexthop via 172.20.12.0 dev eth2
   links:
-    - endpoints: ["csr1:e1-1", "agg-01:e1-1"]     # uplink A (current)
-    - endpoints: ["csr1:e1-2", "agg-02:e1-1"]     # uplink B (current)
-    - endpoints: ["csr1:e1-11", "agg-01:e1-11"]   # uplink A spare ("new 10G")
-    - endpoints: ["csr1:e1-12", "agg-02:e1-11"]   # uplink B spare ("new 10G")
+    - endpoints: ["csr1:e1-1", "telco:eth1"]      # csr1 old fiber (VLAN 101 + 102)
+    - endpoints: ["csr1:e1-11", "telco:eth2"]     # csr1 new fiber
+    - endpoints: ["csr2:e1-1", "telco:eth3"]      # csr2 old fiber (VLAN 201 + 202)
+    - endpoints: ["csr2:e1-11", "telco:eth4"]     # csr2 new fiber
+    - endpoints: ["agg-01:e1-1", "telco:eth5"]    # MTSO fiber, odd VLANs
+    - endpoints: ["agg-02:e1-1", "telco:eth6"]    # MTSO fiber, even VLANs
     - endpoints: ["agg-01:e1-2", "agg-02:e1-2"]   # inter-agg
     - endpoints: ["csr1:e1-3", "h1:eth1"]
+    - endpoints: ["csr2:e1-3", "h3:eth1"]
     - endpoints: ["agg-01:e1-3", "h2:eth1"]
     - endpoints: ["agg-02:e1-3", "h2:eth2"]

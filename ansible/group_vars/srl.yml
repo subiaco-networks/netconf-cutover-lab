@@ -14,14 +14,36 @@ metric_normal: 10
 metric_drained: 1000                 # well above the 20 of the detour through the other agg
 
 confirm_timeout: 120                 # seconds the device waits for the confirming commit
-adjacency_wait: 60                   # seconds to wait for this link's IS-IS adjacency (< confirm_timeout)
+adjacency_wait: 60                   # seconds to wait for an IS-IS adjacency (< confirm_timeout)
 
-# desired state per phase: which port carries the uplink subinterface, and its IS-IS metric
-phase_state:
-  baseline: {port: old, metric: normal}    # lab reset only: back to the original ports
-  drain:    {port: old, metric: drained}
-  cut:      {port: new, metric: drained}
-  restore:  {port: new, metric: normal}
+# traffic checks: per-subinterface out-packets, sampled twice
+# SR Linux (containerised, 26.7) refreshes these counters only about every 5 s, so the window must span
+# at least two refreshes, and the settle time must outlast one refresh after a change.
+traffic_settle_secs: 6               # wait after a commit before sampling
+traffic_sample_secs: 12              # time between the two counter reads
+circuit_idle_pps: 5                  # at or below this on every end = "carrying nothing"
+circuit_busy_pps: 20                 # at least this summed over both ends = "carrying traffic"
+
+# What each phase does to one uplink. Circuits: old | new (host_vars). Ports: old | new | home.
+#   ensure = subinterface + network-instance + IS-IS at that metric;  remove = take the circuit off that port
+# One run = one phase = one confirmed commit on both ends of the link.
+phases:
+  turnup:                            # new fiber up alongside the old one, at a metric that attracts nothing
+    ensure: [{circuit: new, port: new, metric: drained}]
+  swing:                             # traffic onto the new circuit, old one drained, in ONE commit per node
+    ensure: [{circuit: new, port: new, metric: normal}, {circuit: old, port: old, metric: drained}]
+  decom:                             # old circuit removed once it carries nothing
+    remove: [{circuit: old, port: old}]
+  rehome-drain:                      # later window: new circuit back onto the original port
+    ensure: [{circuit: new, port: new, metric: drained}]
+  rehome-cut:
+    ensure: [{circuit: new, port: home, metric: drained}]
+    remove: [{circuit: new, port: new}]
+  rehome-restore:
+    ensure: [{circuit: new, port: home, metric: normal}]
+  baseline:                          # lab reset only: old circuits on the original ports, nothing else
+    ensure: [{circuit: old, port: old, metric: normal}]
+    remove: [{circuit: new, port: new}, {circuit: new, port: home}]
 
 ns:
   nc:    urn:ietf:params:xml:ns:netconf:base:1.0

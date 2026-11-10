@@ -1,52 +1,58 @@
-{#- Desired state of ONE uplink on ONE node, rendered into an edit-config for the candidate.
-    Inputs: u (this host's uplink vars), active_port, inactive_port, isis_metric, link -#}
+{#- Desired state of one site's uplink VLANs on ONE node for one phase, rendered into an edit-config for the candidate.
+    Input: plan (filter site_plan), site -#}
 <nc:config xmlns:nc="{{ ns.nc }}">
-{% if inactive_port != active_port %}
-  <!-- take the uplink off the port we are leaving (remove = no error if already gone) -->
+{% for r in plan.remove %}
+  <!-- take the {{ site }} {{ r.circuit }} circuit (uplink-{{ r.link }}) off {{ r.port }} (remove = no error if already gone) -->
   <interface xmlns="{{ ns.intf }}">
-    <name>{{ inactive_port }}</name>
-    <subinterface nc:operation="remove"><index>{{ u.vlan }}</index></subinterface>
+    <name>{{ r.port }}</name>
+    <subinterface nc:operation="remove"><index>{{ r.vlan }}</index></subinterface>
   </interface>
-{% endif %}
+{% endfor %}
+{% for e in plan.ensure %}
   <interface xmlns="{{ ns.intf }}">
-    <name>{{ active_port }}</name>
+    <name>{{ e.port }}</name>
     {#- port admin-state is deliberately NOT set: the new port must already be lit/admin-up.
         Forcing enable here would silently undo a shutdown someone made on purpose. #}
     <vlan-tagging xmlns="{{ ns.vlan }}">true</vlan-tagging>
     <subinterface>
-      <index>{{ u.vlan }}</index>
-      <description>uplink-{{ link }} to {{ u.peer }}</description>
+      <index>{{ e.vlan }}</index>
+      <description>{{ site }} uplink-{{ e.link }} {{ e.circuit }} circuit to {{ e.peer }}</description>
       <ipv4>
         <admin-state>enable</admin-state>
-        <address><ip-prefix>{{ u.ip }}</ip-prefix></address>
+        <address><ip-prefix>{{ e.ip }}</ip-prefix></address>
       </ipv4>
       <vlan xmlns="{{ ns.vlan }}">
-        <encap><single-tagged><vlan-id>{{ u.vlan }}</vlan-id></single-tagged></encap>
+        <encap><single-tagged><vlan-id>{{ e.vlan }}</vlan-id></single-tagged></encap>
       </vlan>
     </subinterface>
   </interface>
+{% endfor %}
   <network-instance xmlns="{{ ns.ni }}">
     <name>{{ network_instance }}</name>
-{% if inactive_port != active_port %}
-    <interface nc:operation="remove"><name>{{ inactive_port }}.{{ u.vlan }}</name></interface>
-{% endif %}
-    <interface><name>{{ active_port }}.{{ u.vlan }}</name></interface>
+{% for r in plan.remove %}
+    <interface nc:operation="remove"><name>{{ r.sub }}</name></interface>
+{% endfor %}
+{% for e in plan.ensure %}
+    <interface><name>{{ e.sub }}</name></interface>
+{% endfor %}
     <protocols>
       <isis xmlns="{{ ns.isis }}">
         <instance>
           <name>{{ isis_instance }}</name>
-{% if inactive_port != active_port %}
-          <interface nc:operation="remove"><interface-name>{{ inactive_port }}.{{ u.vlan }}</interface-name></interface>
-{% endif %}
+{% for r in plan.remove %}
+          <interface nc:operation="remove"><interface-name>{{ r.sub }}</interface-name></interface>
+{% endfor %}
+{% for e in plan.ensure %}
           <interface>
-            <interface-name>{{ active_port }}.{{ u.vlan }}</interface-name>
+            <interface-name>{{ e.sub }}</interface-name>
             <circuit-type>point-to-point</circuit-type>
             <ipv4-unicast><admin-state>enable</admin-state></ipv4-unicast>
             <level>
               <level-number>2</level-number>
-              <metric>{{ isis_metric }}</metric>
+              <metric>{{ e.metric }}</metric>
             </level>
           </interface>
+{% endfor %}
         </instance>
       </isis>
     </protocols>
