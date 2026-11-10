@@ -1,0 +1,43 @@
+reset done; csr1 adjacencies: [('ethernet-1/1.101', 'up'), ('ethernet-1/1.102', 'up')] csr2: [('ethernet-1/1.201', 'up'), ('ethernet-1/1.202', 'up')]
+# bbm-2
+run at 2026-11-10 14:53:17 PST
+csr1 (site being changed): sent 32,345, delivered 23,691 (lost 8,654)  [8 flows, ping -i 0.01]
+csr2 (bystander site, same MTSO fibers): sent 15,995, delivered 15,995 (lost 0)  [4 flows, ping -i 0.01]
+lost = sent - delivered; packets still in flight when ping was stopped are not counted as sent
+
+## steps (lost packets placed in each step's time window: csr1 / csr2)
+  csr1 decom skip_decom_checks=true                              rc=0     11.9s  lost 1643 / 0
+  csr1 turnup turnup_metric=normal                               rc=0     11.1s  lost 5418 / 0
+  (lost outside any step window: 1593 / 0)
+
+## out-pps per uplink subinterface after each step (evidence of which circuit carries traffic)
+   VLAN 101/102 csr1 old, 111/112 csr1 new, 201/202 csr2 old, 211/212 csr2 new
+  after start (baseline):
+     agg-01 e1/1.101= 197  csr1 e1/1.101= 387  agg-02 e1/1.102= 327  csr1 e1/1.102= 128
+     agg-01 e1/1.201= 132  csr2 e1/1.201= 262  agg-02 e1/1.202= 130  csr2 e1/1.202=   0
+  after csr1 turnup turnup_metric=normal (rc=0):
+     agg-01 e1/1.111= 171  csr1 e1/11.111= 516  agg-02 e1/1.112= 316  csr1 e1/11.112= 214
+     agg-01 e1/1.201= 129  csr2 e1/1.201= 260  agg-02 e1/1.202= 128  csr2 e1/1.202=   0
+
+## flows
+  csr1 10.10.1.2 -> 10.20.1.2: sent 4075, delivered 2952 (lost 1123), longest gap 18412 ms, 50.3 pps over 58.7 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-a]
+  csr1 10.10.1.3 -> 10.20.1.2: sent 4065, delivered 2951 (lost 1114), longest gap 18401 ms, 50.3 pps over 58.7 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-a]
+  csr1 10.10.1.4 -> 10.20.1.2: sent 4042, delivered 2986 (lost 1056), longest gap 17404 ms, 50.9 pps over 58.6 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.5 -> 10.20.1.2: sent 4045, delivered 2980 (lost 1065), longest gap 17404 ms, 50.8 pps over 58.6 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.6 -> 10.20.1.2: sent 4037, delivered 2969 (lost 1068), longest gap 17400 ms, 50.7 pps over 58.6 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.7 -> 10.20.1.2: sent 4034, delivered 2983 (lost 1051), longest gap 17408 ms, 50.9 pps over 58.6 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.8 -> 10.20.1.2: sent 4030, delivered 2917 (lost 1113), longest gap 18404 ms, 49.8 pps over 58.5 s, 0 in flight at stop  [fwd via uplink-b, return via uplink-a]
+  csr1 10.10.1.9 -> 10.20.1.2: sent 4017, delivered 2953 (lost 1064), longest gap 17368 ms, 50.5 pps over 58.5 s, 0 in flight at stop  [fwd via uplink-b, return via uplink-b]
+  csr2 10.10.2.2 -> 10.20.1.2: sent 4032, delivered 4032 (lost 0), longest gap 0 ms, 68.9 pps over 58.5 s, 0 in flight at stop
+  csr2 10.10.2.3 -> 10.20.1.2: sent 3977, delivered 3977 (lost 0), longest gap 0 ms, 68.0 pps over 58.5 s, 0 in flight at stop
+  csr2 10.10.2.4 -> 10.20.1.2: sent 4005, delivered 4005 (lost 0), longest gap 0 ms, 68.5 pps over 58.4 s, 0 in flight at stop
+  csr2 10.10.2.5 -> 10.20.1.2: sent 3981, delivered 3981 (lost 0), longest gap 0 ms, 68.2 pps over 58.4 s, 0 in flight at stop
+
+break-before-make on csr1 (lab knobs): remove the old circuits first (skip_decom_checks),
+then turn the new ones up straight at metric 10 (turnup_metric=normal), back to back with no pause.
+The outage is decom commit -> turnup run -> adjacencies up -> SPF: the fastest 'move the fiber' this lab
+can do. A real break-before-make adds the time to physically move the fiber.
+final csr1 adjacencies: [('ethernet-1/11.111', 'up'), ('ethernet-1/11.112', 'up')]
+final csr1 IS-IS metrics: {'ethernet-1/11.111': '10', 'ethernet-1/11.112': '10'}
+final csr2 adjacencies: [('ethernet-1/1.201', 'up'), ('ethernet-1/1.202', 'up')]
+

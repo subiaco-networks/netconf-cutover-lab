@@ -1,0 +1,228 @@
+{
+ "flows": {
+  "10.10.1.2": {
+   "site": "csr1",
+   "sent": 10673,
+   "delivered": 10672,
+   "lost": 1,
+   "gap_lost": 1,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 40,
+   "pps": 72.3,
+   "secs": 147.7,
+   "lost_at": [
+    1794352026.921512
+   ]
+  },
+  "10.10.1.3": {
+   "site": "csr1",
+   "sent": 10661,
+   "delivered": 10661,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 72.2,
+   "secs": 147.6,
+   "lost_at": []
+  },
+  "10.10.1.4": {
+   "site": "csr1",
+   "sent": 10576,
+   "delivered": 10576,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.7,
+   "secs": 147.6,
+   "lost_at": []
+  },
+  "10.10.1.5": {
+   "site": "csr1",
+   "sent": 10583,
+   "delivered": 10583,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.7,
+   "secs": 147.6,
+   "lost_at": []
+  },
+  "10.10.1.6": {
+   "site": "csr1",
+   "sent": 10575,
+   "delivered": 10575,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.7,
+   "secs": 147.5,
+   "lost_at": []
+  },
+  "10.10.1.7": {
+   "site": "csr1",
+   "sent": 10592,
+   "delivered": 10592,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.8,
+   "secs": 147.5,
+   "lost_at": []
+  },
+  "10.10.1.8": {
+   "site": "csr1",
+   "sent": 10620,
+   "delivered": 10620,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 72.0,
+   "secs": 147.4,
+   "lost_at": []
+  },
+  "10.10.1.9": {
+   "site": "csr1",
+   "sent": 10489,
+   "delivered": 10489,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.2,
+   "secs": 147.4,
+   "lost_at": []
+  },
+  "10.10.2.2": {
+   "site": "csr2",
+   "sent": 10610,
+   "delivered": 10610,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 1,
+   "longest_gap_ms": 0,
+   "pps": 72.0,
+   "secs": 147.3,
+   "lost_at": []
+  },
+  "10.10.2.3": {
+   "site": "csr2",
+   "sent": 10509,
+   "delivered": 10509,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.3,
+   "secs": 147.3,
+   "lost_at": []
+  },
+  "10.10.2.4": {
+   "site": "csr2",
+   "sent": 10622,
+   "delivered": 10622,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 72.1,
+   "secs": 147.3,
+   "lost_at": []
+  },
+  "10.10.2.5": {
+   "site": "csr2",
+   "sent": 10500,
+   "delivered": 10500,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 71.3,
+   "secs": 147.3,
+   "lost_at": []
+  }
+ },
+ "steps": [
+  {
+   "step": "csr1 turnup",
+   "rc": 0,
+   "start": 1794351909.4357271,
+   "end": 1794351942.2932818,
+   "secs": 32.9,
+   "why": []
+  },
+  {
+   "step": "csr1 swing (process group SIGKILLed after commit)",
+   "rc": -9,
+   "start": 1794351956.5641675,
+   "end": 1794351967.5226939,
+   "secs": 11.0,
+   "why": []
+  },
+  {
+   "step": "rollback wait",
+   "rc": 0,
+   "start": 1794351967.5226939,
+   "end": 1794352026.4868927,
+   "secs": 59.0,
+   "why": []
+  }
+ ],
+ "circuit_pps": [
+  {
+   "after": "start (baseline)",
+   "t": 1794351909.4355118,
+   "pps": {
+    "csr1 ethernet-1/1.101": 382,
+    "csr1 ethernet-1/1.102": 126,
+    "csr2 ethernet-1/1.201": 324,
+    "csr2 ethernet-1/1.202": 0,
+    "agg-01 ethernet-1/1.101": 192,
+    "agg-01 ethernet-1/1.201": 128,
+    "agg-02 ethernet-1/1.102": 320,
+    "agg-02 ethernet-1/1.202": 127
+   }
+  },
+  {
+   "after": "csr1 turnup",
+   "t": 1794351954.8495164,
+   "pps": {
+    "csr1 ethernet-1/1.101": 380,
+    "csr1 ethernet-1/1.102": 126,
+    "csr1 ethernet-1/11.111": 0,
+    "csr1 ethernet-1/11.112": 0,
+    "csr2 ethernet-1/1.201": 258,
+    "csr2 ethernet-1/1.202": 0,
+    "agg-01 ethernet-1/1.101": 194,
+    "agg-01 ethernet-1/1.111": 0,
+    "agg-01 ethernet-1/1.201": 129,
+    "agg-02 ethernet-1/1.102": 321,
+    "agg-02 ethernet-1/1.112": 0,
+    "agg-02 ethernet-1/1.202": 127
+   }
+  },
+  {
+   "after": "rollback",
+   "t": 1794352039.0428822,
+   "pps": {
+    "csr1 ethernet-1/1.101": 382,
+    "csr1 ethernet-1/1.102": 127,
+    "csr1 ethernet-1/11.111": 2,
+    "csr1 ethernet-1/11.112": 1,
+    "csr2 ethernet-1/1.201": 385,
+    "csr2 ethernet-1/1.202": 0,
+    "agg-01 ethernet-1/1.101": 203,
+    "agg-01 ethernet-1/1.111": 89,
+    "agg-01 ethernet-1/1.201": 194,
+    "agg-02 ethernet-1/1.102": 342,
+    "agg-02 ethernet-1/1.112": 141,
+    "agg-02 ethernet-1/1.202": 191
+   }
+  }
+ ]
+}

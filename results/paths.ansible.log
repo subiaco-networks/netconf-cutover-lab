@@ -1,0 +1,619 @@
+
+===== ansible-playbook -e site=csr1 -e phase=baseline -e apply_change=true -e discard_stale_candidate=true  (rc=0, 11.0s)
+
+PLAY [Site csr1 uplink a+b - baseline] *****************************************
+
+TASK [Check arguments] *********************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Circuit names on this node] **********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Plan] ********************************************************************
+ok: [csr1] => 
+    msg: |-
+        APPLY site csr1 uplink(s) a+b phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.101 metric 10', 'ethernet-1/1.102 metric 10'];
+        remove ['ethernet-1/11.111', 'ethernet-1/1.111', 'ethernet-1/11.112', 'ethernet-1/1.112']
+ok: [agg-01] => 
+    msg: |-
+        APPLY site csr1 uplink(s) a phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.101 metric 10'];
+        remove ['ethernet-1/1.111']
+ok: [agg-02] => 
+    msg: |-
+        APPLY site csr1 uplink(s) b phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.102 metric 10'];
+        remove ['ethernet-1/1.112']
+
+TASK [1. Read IS-IS adjacencies] ***********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Adjacencies up before the change] *************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Other VLAN (uplink a) of csr1 must have an IS-IS adjacency up] ********
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Swing needs every new circuit's adjacency up] *************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every new circuit's adjacency up] *************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom: measure what the old circuits carry] ***************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every old circuit idle on every end] **********************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Read running IS-IS config (drain check)] ******************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Rehome-cut needs the circuit drained first] ***************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Pre-checks passed on this node] ***************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Every node must pass its pre-checks before any node locks] ************
+ok: [csr1] => (item=csr1)
+ok: [agg-01] => (item=csr1)
+ok: [csr1] => (item=agg-01)
+ok: [agg-01] => (item=agg-01)
+ok: [agg-02] => (item=csr1)
+ok: [csr1] => (item=agg-02)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-02] => (item=agg-02)
+
+TASK [2. Lock the candidate datastore] *****************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [2. Candidate is not clean - refuse] **************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Discard stale candidate changes (requested)] **************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Lock the candidate datastore (retry)] *********************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Locked] ***************************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [3. Edit the candidate (target=candidate, no commit)] *********************
+ok: [agg-01]
+ok: [agg-02]
+ok: [csr1]
+
+TASK [4. <validate> the candidate] *********************************************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr1]
+
+TASK [5. Read running] *********************************************************
+ok: [csr1] => (item=ethernet-1/1)
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [csr1] => (item=ethernet-1/11)
+ok: [agg-02] => (item=default)
+ok: [agg-01] => (item=default)
+ok: [csr1] => (item=default)
+
+TASK [5. Read candidate] *******************************************************
+ok: [csr1] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [csr1] => (item=ethernet-1/11)
+ok: [agg-01] => (item=default)
+ok: [agg-02] => (item=default)
+ok: [csr1] => (item=default)
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr1] => 
+    msg:
+    - (no change - candidate equals running)
+ok: [agg-01] => 
+    msg:
+    - (no change - candidate equals running)
+ok: [agg-02] => 
+    msg:
+    - (no change - candidate equals running)
+
+TASK [6. Discard candidate] ****************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Unlock] ***************************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Dry run complete] *****************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Stop] *****************************************************************
+skipping: [csr1]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-01]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-02]
+
+TASK [7. Persist id for this run] **********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. <commit><confirmed/> confirm-timeout 120s] ****************************
+ok: [agg-02]
+ok: [csr1]
+ok: [agg-01]
+
+TASK [7. Committed (pending confirmation)] *************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. CONFIRMED-COMMIT-SENT] ************************************************
+ok: [csr1] => 
+    msg: confirmed commit at 14:11:42.592145; persist-id uplift-csr1-ab-baseline-csr1-1794348702024114553;
+        auto-rollback in 120s unless confirmed
+ok: [agg-01] => 
+    msg: confirmed commit at 14:11:42.595887; persist-id uplift-csr1-a-baseline-agg-01-1794348702027040933;
+        auto-rollback in 120s unless confirmed
+ok: [agg-02] => 
+    msg: confirmed commit at 14:11:42.600817; persist-id uplift-csr1-b-baseline-agg-02-1794348702031757081;
+        auto-rollback in 120s unless confirmed
+
+TASK [7. Pause after commit (test knob)] ***************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Adjacencies that must be up after this phase] *************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Wait for IS-IS adjacency on ethernet-1/1.101, ethernet-1/1.102] *******
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [8. Recheck the other VLAN (uplink a) of csr1] ****************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Traffic check] ********************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Turnup: new circuits idle on every end, old circuits still carrying traffic] ***
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Swing: old circuits idle on every end, new circuits carrying traffic] ***
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Checks passed on this node] *******************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Every node must pass before any node confirms] ************************
+ok: [csr1] => (item=csr1)
+ok: [agg-01] => (item=csr1)
+ok: [csr1] => (item=agg-01)
+ok: [agg-02] => (item=csr1)
+ok: [agg-01] => (item=agg-01)
+ok: [csr1] => (item=agg-02)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-02] => (item=agg-02)
+
+TASK [9. Confirming <commit>] **************************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [9. Confirmed] ************************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [9. Unlock] ***************************************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [9. Done] *****************************************************************
+ok: [csr1] => 
+    msg: CONFIRMED site csr1 uplink(s) a+b phase baseline at 14:11:44.655855
+ok: [agg-01] => 
+    msg: CONFIRMED site csr1 uplink(s) a phase baseline at 14:11:44.662375
+ok: [agg-02] => 
+    msg: CONFIRMED site csr1 uplink(s) b phase baseline at 14:11:44.666261
+
+PLAY RECAP *********************************************************************
+agg-01                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+agg-02                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+csr1                       : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+
+
+===== ansible-playbook -e site=csr2 -e phase=baseline -e apply_change=true -e discard_stale_candidate=true  (rc=0, 11.4s)
+
+PLAY [Site csr2 uplink a+b - baseline] *****************************************
+
+TASK [Check arguments] *********************************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Circuit names on this node] **********************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Plan] ********************************************************************
+ok: [csr2] => 
+    msg: |-
+        APPLY site csr2 uplink(s) a+b phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.201 metric 10', 'ethernet-1/1.202 metric 10'];
+        remove ['ethernet-1/11.211', 'ethernet-1/1.211', 'ethernet-1/11.212', 'ethernet-1/1.212']
+ok: [agg-01] => 
+    msg: |-
+        APPLY site csr2 uplink(s) a phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.201 metric 10'];
+        remove ['ethernet-1/1.211']
+ok: [agg-02] => 
+    msg: |-
+        APPLY site csr2 uplink(s) b phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.202 metric 10'];
+        remove ['ethernet-1/1.212']
+
+TASK [1. Read IS-IS adjacencies] ***********************************************
+ok: [csr2]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [1. Adjacencies up before the change] *************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Other VLAN (uplink a) of csr2 must have an IS-IS adjacency up] ********
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Swing needs every new circuit's adjacency up] *************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every new circuit's adjacency up] *************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom: measure what the old circuits carry] ***************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every old circuit idle on every end] **********************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Read running IS-IS config (drain check)] ******************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Rehome-cut needs the circuit drained first] ***************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Pre-checks passed on this node] ***************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Every node must pass its pre-checks before any node locks] ************
+ok: [csr2] => (item=csr2)
+ok: [agg-01] => (item=csr2)
+ok: [csr2] => (item=agg-01)
+ok: [agg-01] => (item=agg-01)
+ok: [agg-02] => (item=csr2)
+ok: [csr2] => (item=agg-02)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-02] => (item=agg-02)
+
+TASK [2. Lock the candidate datastore] *****************************************
+ok: [csr2]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [2. Candidate is not clean - refuse] **************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Discard stale candidate changes (requested)] **************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Lock the candidate datastore (retry)] *********************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Locked] ***************************************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [3. Edit the candidate (target=candidate, no commit)] *********************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr2]
+
+TASK [4. <validate> the candidate] *********************************************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr2]
+
+TASK [5. Read running] *********************************************************
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [csr2] => (item=ethernet-1/1)
+ok: [agg-01] => (item=default)
+ok: [csr2] => (item=ethernet-1/11)
+ok: [agg-02] => (item=default)
+ok: [csr2] => (item=default)
+
+TASK [5. Read candidate] *******************************************************
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [csr2] => (item=ethernet-1/1)
+ok: [agg-02] => (item=default)
+ok: [agg-01] => (item=default)
+ok: [csr2] => (item=ethernet-1/11)
+ok: [csr2] => (item=default)
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr2] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -3,8 +3,9 @@'
+    - '             <admin-state>enable</admin-state>'
+    - '             <vlan-tagging xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">true</vlan-tagging>'
+    - '             <subinterface>'
+    - '                 <index>201</index>'
+    - +                <description>csr2 uplink-a old circuit to agg-01</description>
+    - '                 <ipv4>'
+    - '                     <admin-state>enable</admin-state>'
+    - '                     <address>'
+    - '                         <ip-prefix>172.20.31.1/31</ip-prefix>'
+    - '@@ -19,8 +20,9 @@'
+    - '                 </vlan>'
+    - '             </subinterface>'
+    - '             <subinterface>'
+    - '                 <index>202</index>'
+    - +                <description>csr2 uplink-b old circuit to agg-02</description>
+    - '                 <ipv4>'
+    - '                     <admin-state>enable</admin-state>'
+    - '                     <address>'
+    - '                         <ip-prefix>172.20.32.1/31</ip-prefix>'
+ok: [agg-01] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -20,8 +20,9 @@'
+    - '                 </vlan>'
+    - '             </subinterface>'
+    - '             <subinterface>'
+    - '                 <index>201</index>'
+    - +                <description>csr2 uplink-a old circuit to csr2</description>
+    - '                 <ipv4>'
+    - '                     <admin-state>enable</admin-state>'
+    - '                     <address>'
+    - '                         <ip-prefix>172.20.31.0/31</ip-prefix>'
+ok: [agg-02] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -20,8 +20,9 @@'
+    - '                 </vlan>'
+    - '             </subinterface>'
+    - '             <subinterface>'
+    - '                 <index>202</index>'
+    - +                <description>csr2 uplink-b old circuit to csr2</description>
+    - '                 <ipv4>'
+    - '                     <admin-state>enable</admin-state>'
+    - '                     <address>'
+    - '                         <ip-prefix>172.20.32.0/31</ip-prefix>'
+
+TASK [6. Discard candidate] ****************************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Unlock] ***************************************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Dry run complete] *****************************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Stop] *****************************************************************
+skipping: [csr2]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-01]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-02]
+
+TASK [7. Persist id for this run] **********************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. <commit><confirmed/> confirm-timeout 120s] ****************************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr2]
+
+TASK [7. Committed (pending confirmation)] *************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. CONFIRMED-COMMIT-SENT] ************************************************
+ok: [csr2] => 
+    msg: confirmed commit at 14:11:53.900352; persist-id uplift-csr2-ab-baseline-csr2-1794348713253994291;
+        auto-rollback in 120s unless confirmed
+ok: [agg-01] => 
+    msg: confirmed commit at 14:11:53.903993; persist-id uplift-csr2-a-baseline-agg-01-1794348713259223046;
+        auto-rollback in 120s unless confirmed
+ok: [agg-02] => 
+    msg: confirmed commit at 14:11:53.908356; persist-id uplift-csr2-b-baseline-agg-02-1794348713265158352;
+        auto-rollback in 120s unless confirmed
+
+TASK [7. Pause after commit (test knob)] ***************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Adjacencies that must be up after this phase] *************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Wait for IS-IS adjacency on ethernet-1/1.201, ethernet-1/1.202] *******
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr2]
+
+TASK [8. Recheck the other VLAN (uplink a) of csr2] ****************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Traffic check] ********************************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Turnup: new circuits idle on every end, old circuits still carrying traffic] ***
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Swing: old circuits idle on every end, new circuits carrying traffic] ***
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Checks passed on this node] *******************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Every node must pass before any node confirms] ************************
+ok: [csr2] => (item=csr2)
+ok: [agg-01] => (item=csr2)
+ok: [csr2] => (item=agg-01)
+ok: [agg-02] => (item=csr2)
+ok: [agg-01] => (item=agg-01)
+ok: [csr2] => (item=agg-02)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-02] => (item=agg-02)
+
+TASK [9. Confirming <commit>] **************************************************
+ok: [csr2]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [9. Confirmed] ************************************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [9. Unlock] ***************************************************************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr2]
+
+TASK [9. Done] *****************************************************************
+ok: [csr2] => 
+    msg: CONFIRMED site csr2 uplink(s) a+b phase baseline at 14:11:56.042566
+ok: [agg-01] => 
+    msg: CONFIRMED site csr2 uplink(s) a phase baseline at 14:11:56.045317
+ok: [agg-02] => 
+    msg: CONFIRMED site csr2 uplink(s) b phase baseline at 14:11:56.048959
+
+PLAY RECAP *********************************************************************
+agg-01                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+agg-02                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+csr2                       : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+

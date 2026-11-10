@@ -1,0 +1,111 @@
+reset done; csr1 adjacencies: [('ethernet-1/1.101', 'up'), ('ethernet-1/1.102', 'up')] csr2: [('ethernet-1/1.201', 'up'), ('ethernet-1/1.202', 'up')]
+# full-uplift
+run at 2026-11-10 14:38:03 PST
+csr1 (site being changed): sent 347,098, delivered 347,098 (lost 0)  [8 flows, ping -i 0.01]
+csr2 (bystander site, same MTSO fibers): sent 172,875, delivered 172,875 (lost 0)  [4 flows, ping -i 0.01]
+lost = sent - delivered; packets still in flight when ping was stopped are not counted as sent
+
+## steps (lost packets placed in each step's time window: csr1 / csr2)
+  csr1 turnup                                                    rc=0     32.5s  lost 0 / 0
+  csr1 swing                                                     rc=0     33.3s  lost 0 / 0
+  csr1 decom                                                     rc=0     25.9s  lost 0 / 0
+  csr2 turnup                                                    rc=0     32.7s  lost 0 / 0
+  csr2 swing                                                     rc=0     33.0s  lost 0 / 0
+  csr2 decom                                                     rc=0     25.6s  lost 0 / 0
+  csr1 a rehome-drain                                            rc=0     11.2s  lost 0 / 0
+  csr1 a rehome-cut                                              rc=0     11.6s  lost 0 / 0
+  csr1 a rehome-restore                                          rc=0     11.2s  lost 0 / 0
+  csr1 b rehome-drain                                            rc=0     11.2s  lost 0 / 0
+  csr1 b rehome-cut                                              rc=0     11.5s  lost 0 / 0
+  csr1 b rehome-restore                                          rc=0     10.7s  lost 0 / 0
+  csr2 a rehome-drain                                            rc=0     11.5s  lost 0 / 0
+  csr2 a rehome-cut                                              rc=0     11.4s  lost 0 / 0
+  csr2 a rehome-restore                                          rc=0     11.1s  lost 0 / 0
+  csr2 b rehome-drain                                            rc=0     11.3s  lost 0 / 0
+  csr2 b rehome-cut                                              rc=0     11.7s  lost 0 / 0
+  csr2 b rehome-restore                                          rc=0     11.1s  lost 0 / 0
+
+## out-pps per uplink subinterface after each step (evidence of which circuit carries traffic)
+   VLAN 101/102 csr1 old, 111/112 csr1 new, 201/202 csr2 old, 211/212 csr2 new
+  after start (baseline):
+     agg-01 e1/1.101= 280  csr1 e1/1.101= 538  agg-02 e1/1.102= 464  csr1 e1/1.102= 178
+     agg-01 e1/1.201= 184  csr2 e1/1.201= 250  agg-02 e1/1.202= 182  csr2 e1/1.202=   0
+  after csr1 turnup (rc=0):
+     agg-01 e1/1.101= 282  csr1 e1/1.101= 565  agg-02 e1/1.102= 464  csr1 e1/1.102= 187
+     agg-01 e1/1.111=   0  csr1 e1/11.111=   0  agg-02 e1/1.112=   0  csr1 e1/11.112=   0
+     agg-01 e1/1.201= 186  csr2 e1/1.201= 245  agg-02 e1/1.202= 185  csr2 e1/1.202=   0
+  after csr1 swing (rc=0):
+     agg-01 e1/1.101=   0  csr1 e1/1.101=   0  agg-02 e1/1.102=   0  csr1 e1/1.102=   0
+     agg-01 e1/1.111= 297  csr1 e1/11.111= 590  agg-02 e1/1.112= 490  csr1 e1/11.112= 197
+     agg-01 e1/1.201= 198  csr2 e1/1.201= 393  agg-02 e1/1.202= 195  csr2 e1/1.202=   0
+  after csr1 decom (rc=0):
+     agg-01 e1/1.111= 199  csr1 e1/11.111= 397  agg-02 e1/1.112= 329  csr1 e1/11.112= 131
+     agg-01 e1/1.201= 132  csr2 e1/1.201= 264  agg-02 e1/1.202= 131  csr2 e1/1.202=   0
+  after csr2 turnup (rc=0):
+     agg-01 e1/1.111= 184  csr1 e1/11.111= 532  agg-02 e1/1.112= 303  csr1 e1/11.112= 176
+     agg-01 e1/1.201= 122  csr2 e1/1.201= 241  agg-02 e1/1.202= 120  csr2 e1/1.202=   0
+     agg-01 e1/1.211=   0  csr2 e1/11.211=   0  agg-02 e1/1.212=   0  csr2 e1/11.212=   0
+  after csr2 swing (rc=0):
+     agg-01 e1/1.111= 147  csr1 e1/11.111= 440  agg-02 e1/1.112= 245  csr1 e1/11.112= 146
+     agg-01 e1/1.201=   0  csr2 e1/1.201=   0  agg-02 e1/1.202=   0  csr2 e1/1.202=   0
+     agg-01 e1/1.211=  98  csr2 e1/11.211= 195  agg-02 e1/1.212=  97  csr2 e1/11.212=   0
+  after csr2 decom (rc=0):
+     agg-01 e1/1.111= 197  csr1 e1/11.111= 386  agg-02 e1/1.112= 324  csr1 e1/11.112= 127
+     agg-01 e1/1.211= 131  csr2 e1/11.211= 261  agg-02 e1/1.212= 129  csr2 e1/11.212=   0
+  after csr1 a rehome-drain (rc=0):
+     agg-01 e1/1.111=   0  csr1 e1/11.111=   0  agg-02 e1/1.112= 526  csr1 e1/11.112= 522
+     agg-01 e1/1.211= 128  csr2 e1/11.211= 378  agg-02 e1/1.212= 128  csr2 e1/11.212=   0
+  after csr1 a rehome-cut (rc=0):
+     agg-01 e1/1.111=   0  csr1 e1/1.111=   0  agg-02 e1/1.112= 784  csr1 e1/11.112= 784
+     agg-01 e1/1.211= 190  csr2 e1/11.211= 381  agg-02 e1/1.212= 191  csr2 e1/11.212=   0
+  after csr1 a rehome-restore (rc=0):
+     agg-01 e1/1.111= 195  csr1 e1/1.111= 588  agg-02 e1/1.112= 319  csr1 e1/11.112= 194
+     agg-01 e1/1.211= 130  csr2 e1/11.211= 256  agg-02 e1/1.212= 127  csr2 e1/11.212=   0
+  after csr1 b rehome-drain (rc=0):
+     agg-01 e1/1.111= 524  csr1 e1/1.111= 524  agg-02 e1/1.112=   0  csr1 e1/11.112=   0
+     agg-01 e1/1.211= 127  csr2 e1/11.211= 250  agg-02 e1/1.212= 124  csr2 e1/11.212=   0
+  after csr1 b rehome-cut (rc=0):
+     agg-01 e1/1.111= 523  csr1 e1/1.111= 523  agg-02 e1/1.112=   0  csr1 e1/1.112=   0
+     agg-01 e1/1.211= 129  csr2 e1/11.211= 257  agg-02 e1/1.212= 126  csr2 e1/11.212=   0
+  after csr1 b rehome-restore (rc=0):
+     agg-01 e1/1.111= 294  csr1 e1/1.111= 579  agg-02 e1/1.112= 485  csr1 e1/1.112= 191
+     agg-01 e1/1.211= 195  csr2 e1/11.211= 388  agg-02 e1/1.212= 193  csr2 e1/11.212=   0
+  after csr2 a rehome-drain (rc=0):
+     agg-01 e1/1.111= 195  csr1 e1/1.111= 584  agg-02 e1/1.112= 326  csr1 e1/1.112= 195
+     agg-01 e1/1.211=   0  csr2 e1/11.211=   0  agg-02 e1/1.212= 262  csr2 e1/11.212= 264
+  after csr2 a rehome-cut (rc=0):
+     agg-01 e1/1.111= 176  csr1 e1/1.111= 351  agg-02 e1/1.112= 293  csr1 e1/1.112= 117
+     agg-01 e1/1.211=   0  csr2 e1/1.211=   0  agg-02 e1/1.212= 237  csr2 e1/11.212= 240
+  after csr2 a rehome-restore (rc=0):
+     agg-01 e1/1.111= 193  csr1 e1/1.111= 381  agg-02 e1/1.112= 321  csr1 e1/1.112= 126
+     agg-01 e1/1.211= 129  csr2 e1/1.211= 260  agg-02 e1/1.212= 128  csr2 e1/11.212=   0
+  after csr2 b rehome-drain (rc=0):
+     agg-01 e1/1.111= 273  csr1 e1/1.111= 358  agg-02 e1/1.112= 451  csr1 e1/1.112= 119
+     agg-01 e1/1.211= 370  csr2 e1/1.211= 367  agg-02 e1/1.212=   0  csr2 e1/11.212=   0
+  after csr2 b rehome-cut (rc=0):
+     agg-01 e1/1.111= 221  csr1 e1/1.111= 442  agg-02 e1/1.112= 366  csr1 e1/1.112= 147
+     agg-01 e1/1.211= 297  csr2 e1/1.211= 198  agg-02 e1/1.212=   0  csr2 e1/1.212=   0
+  after csr2 b rehome-restore (rc=0):
+     agg-01 e1/1.111= 144  csr1 e1/1.111= 290  agg-02 e1/1.112= 241  csr1 e1/1.112=  96
+     agg-01 e1/1.211=  97  csr2 e1/1.211= 193  agg-02 e1/1.212=  96  csr2 e1/1.212=   0
+
+## flows
+  csr1 10.10.1.2 -> 10.20.1.2: sent 43577, delivered 43577 (lost 0), longest gap 0 ms, 66.7 pps over 653.3 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-a]
+  csr1 10.10.1.3 -> 10.20.1.2: sent 43570, delivered 43570 (lost 0), longest gap 0 ms, 66.7 pps over 653.2 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-a]
+  csr1 10.10.1.4 -> 10.20.1.2: sent 43343, delivered 43343 (lost 0), longest gap 0 ms, 66.4 pps over 653.2 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.5 -> 10.20.1.2: sent 43337, delivered 43337 (lost 0), longest gap 0 ms, 66.3 pps over 653.2 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.6 -> 10.20.1.2: sent 43357, delivered 43357 (lost 0), longest gap 0 ms, 66.4 pps over 653.2 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.7 -> 10.20.1.2: sent 43360, delivered 43360 (lost 0), longest gap 0 ms, 66.4 pps over 653.1 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.8 -> 10.20.1.2: sent 43445, delivered 43445 (lost 0), longest gap 0 ms, 66.5 pps over 653.1 s, 0 in flight at stop  [fwd via uplink-b, return via uplink-a]
+  csr1 10.10.1.9 -> 10.20.1.2: sent 43109, delivered 43109 (lost 0), longest gap 0 ms, 66.0 pps over 653.1 s, 0 in flight at stop  [fwd via uplink-b, return via uplink-b]
+  csr2 10.10.2.2 -> 10.20.1.2: sent 43404, delivered 43404 (lost 0), longest gap 0 ms, 66.5 pps over 653.1 s, 0 in flight at stop
+  csr2 10.10.2.3 -> 10.20.1.2: sent 43052, delivered 43052 (lost 0), longest gap 0 ms, 65.9 pps over 653.0 s, 0 in flight at stop
+  csr2 10.10.2.4 -> 10.20.1.2: sent 43398, delivered 43398 (lost 0), longest gap 0 ms, 66.5 pps over 653.0 s, 0 in flight at stop
+  csr2 10.10.2.5 -> 10.20.1.2: sent 43021, delivered 43021 (lost 0), longest gap 0 ms, 65.9 pps over 653.0 s, 0 in flight at stop
+
+csr1 turnup -> swing -> decom, then csr2 the same; then re-home csr1 VLAN a, csr1 VLAN b, csr2 a, csr2 b
+(drain -> cut -> restore each) from ethernet-1/11 back onto ethernet-1/1.
+final csr1 adjacencies: [('ethernet-1/1.111', 'up'), ('ethernet-1/1.112', 'up')]
+final csr1 IS-IS metrics: {'ethernet-1/1.111': '10', 'ethernet-1/1.112': '10'}
+final csr2 adjacencies: [('ethernet-1/1.211', 'up'), ('ethernet-1/1.212', 'up')]
+

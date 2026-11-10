@@ -1,0 +1,55 @@
+reset done; csr1 adjacencies: [('ethernet-1/1.101', 'up'), ('ethernet-1/1.102', 'up')] csr2: [('ethernet-1/1.201', 'up'), ('ethernet-1/1.202', 'up')]
+# swing-before-turnup
+run at 2026-11-10 14:26:23 PST
+csr1 (site being changed): sent 21,999, delivered 21,999 (lost 0)  [8 flows, ping -i 0.01]
+csr2 (bystander site, same MTSO fibers): sent 10,947, delivered 10,947 (lost 0)  [4 flows, ping -i 0.01]
+lost = sent - delivered; packets still in flight when ping was stopped are not counted as sent
+
+## steps (lost packets placed in each step's time window: csr1 / csr2)
+  csr1 swing                                                     rc=2      2.1s  lost 0 / 0
+      -> REFUSED: no IS-IS adjacency up on [''ethernet-1/1.111''] on agg-01 (up:
+      -> REFUSED: no IS-IS adjacency up on [''ethernet-1/1.111''] on agg-01 (up: [''ethernet-1/1.101'',
+      -> REFUSED: no IS-IS adjacency up on [''ethernet-1/1.112''] on agg-02 (up:
+      -> REFUSED: no IS-IS adjacency up on [''ethernet-1/1.112''] on agg-02 (up: [''ethernet-1/1.102'',
+      -> REFUSED: no IS-IS adjacency up on [''ethernet-1/11.112'', ''ethernet-1/11.111'']
+      -> REFUSED: no IS-IS adjacency up on ['ethernet-1/1.111'] on agg-01 (up: ['ethernet-1/1.101', 'ethernet-1/1.201', 'ethernet-1/2.300']). Run phase=turnup first. Swinging onto a circuit without an adjacency would move nothing, or worse.
+      -> REFUSED: no IS-IS adjacency up on ['ethernet-1/1.111'] on agg-01 (up: ['ethernet-1/1.101', 'ethernet-1/1.201', 'ethernet-1/2.300']). Run phase=turnup first. Swinging onto a circuit without an adjacency would move nothing, or worse.. Nothing was committed.
+      -> REFUSED: no IS-IS adjacency up on ['ethernet-1/1.112'] on agg-02 (up: ['ethernet-1/1.102', 'ethernet-1/1.202', 'ethernet-1/2.300']). Run phase=turnup first. Swinging onto a circuit without an adjacency would move nothing, or worse.
+      -> REFUSED: no IS-IS adjacency up on ['ethernet-1/1.112'] on agg-02 (up: ['ethernet-1/1.102', 'ethernet-1/1.202', 'ethernet-1/2.300']). Run phase=turnup first. Swinging onto a circuit without an adjacency would move nothing, or worse.. Nothing was committed.
+      -> REFUSED: no IS-IS adjacency up on ['ethernet-1/11.112', 'ethernet-1/11.111'] on csr1 (up: ['ethernet-1/1.101', 'ethernet-1/1.102']). Run phase=turnup first. Swinging onto a circuit without an adjacency would move nothing, or worse.
+      -> REFUSED: no IS-IS adjacency up on ['ethernet-1/11.112', 'ethernet-1/11.111'] on csr1 (up: ['ethernet-1/1.101', 'ethernet-1/1.102']). Run phase=turnup first. Swinging onto a circuit without an adjacency would move nothing, or worse.. Nothing was committed.
+      -> SWING FAILED on agg-01 at task ''
+      -> SWING FAILED on agg-01 at task '1. Swing needs every new circuit'
+      -> SWING FAILED on agg-02 at task ''
+      -> SWING FAILED on agg-02 at task '1. Swing needs every new circuit'
+      -> SWING FAILED on csr1 at task ''
+      -> SWING FAILED on csr1 at task '1. Swing needs every new circuit'
+
+## out-pps per uplink subinterface after each step (evidence of which circuit carries traffic)
+   VLAN 101/102 csr1 old, 111/112 csr1 new, 201/202 csr2 old, 211/212 csr2 new
+  after start (baseline):
+     agg-01 e1/1.101= 198  csr1 e1/1.101= 391  agg-02 e1/1.102= 324  csr1 e1/1.102= 129
+     agg-01 e1/1.201= 131  csr2 e1/1.201= 262  agg-02 e1/1.202= 129  csr2 e1/1.202=   0
+  after csr1 swing (rc=2):
+     agg-01 e1/1.101= 190  csr1 e1/1.101= 379  agg-02 e1/1.102= 314  csr1 e1/1.102= 126
+     agg-01 e1/1.201= 127  csr2 e1/1.201= 252  agg-02 e1/1.202= 125  csr2 e1/1.202=   0
+
+## flows
+  csr1 10.10.1.2 -> 10.20.1.2: sent 2776, delivered 2776 (lost 0), longest gap 0 ms, 73.3 pps over 37.9 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-a]
+  csr1 10.10.1.3 -> 10.20.1.2: sent 2784, delivered 2784 (lost 0), longest gap 0 ms, 73.6 pps over 37.9 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-a]
+  csr1 10.10.1.4 -> 10.20.1.2: sent 2756, delivered 2756 (lost 0), longest gap 0 ms, 72.9 pps over 37.8 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.5 -> 10.20.1.2: sent 2730, delivered 2730 (lost 0), longest gap 0 ms, 72.2 pps over 37.8 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.6 -> 10.20.1.2: sent 2752, delivered 2752 (lost 0), longest gap 0 ms, 72.9 pps over 37.8 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.7 -> 10.20.1.2: sent 2745, delivered 2745 (lost 0), longest gap 0 ms, 72.7 pps over 37.7 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.8 -> 10.20.1.2: sent 2749, delivered 2749 (lost 0), longest gap 0 ms, 72.9 pps over 37.7 s, 0 in flight at stop  [fwd via uplink-b, return via uplink-a]
+  csr1 10.10.1.9 -> 10.20.1.2: sent 2707, delivered 2707 (lost 0), longest gap 0 ms, 71.8 pps over 37.7 s, 0 in flight at stop  [fwd via uplink-b, return via uplink-b]
+  csr2 10.10.2.2 -> 10.20.1.2: sent 2764, delivered 2764 (lost 0), longest gap 0 ms, 73.3 pps over 37.7 s, 0 in flight at stop
+  csr2 10.10.2.3 -> 10.20.1.2: sent 2711, delivered 2711 (lost 0), longest gap 0 ms, 72.0 pps over 37.7 s, 0 in flight at stop
+  csr2 10.10.2.4 -> 10.20.1.2: sent 2752, delivered 2752 (lost 0), longest gap 0 ms, 73.1 pps over 37.6 s, 0 in flight at stop
+  csr2 10.10.2.5 -> 10.20.1.2: sent 2720, delivered 2720 (lost 0), longest gap 0 ms, 72.3 pps over 37.6 s, 0 in flight at stop
+
+swing straight from baseline, no turnup (expected: refused before anything is locked).
+final csr1 adjacencies: [('ethernet-1/1.101', 'up'), ('ethernet-1/1.102', 'up')]
+final csr1 IS-IS metrics: {'ethernet-1/1.101': '10', 'ethernet-1/1.102': '10'}
+final csr2 adjacencies: [('ethernet-1/1.201', 'up'), ('ethernet-1/1.202', 'up')]
+

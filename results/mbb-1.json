@@ -1,0 +1,240 @@
+{
+ "flows": {
+  "10.10.1.2": {
+   "site": "csr1",
+   "sent": 11584,
+   "delivered": 11584,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.8,
+   "secs": 163.6,
+   "lost_at": []
+  },
+  "10.10.1.3": {
+   "site": "csr1",
+   "sent": 11591,
+   "delivered": 11591,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.9,
+   "secs": 163.6,
+   "lost_at": []
+  },
+  "10.10.1.4": {
+   "site": "csr1",
+   "sent": 11466,
+   "delivered": 11466,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.1,
+   "secs": 163.5,
+   "lost_at": []
+  },
+  "10.10.1.5": {
+   "site": "csr1",
+   "sent": 11470,
+   "delivered": 11470,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.1,
+   "secs": 163.5,
+   "lost_at": []
+  },
+  "10.10.1.6": {
+   "site": "csr1",
+   "sent": 11470,
+   "delivered": 11470,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.2,
+   "secs": 163.5,
+   "lost_at": []
+  },
+  "10.10.1.7": {
+   "site": "csr1",
+   "sent": 11483,
+   "delivered": 11483,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.2,
+   "secs": 163.5,
+   "lost_at": []
+  },
+  "10.10.1.8": {
+   "site": "csr1",
+   "sent": 11482,
+   "delivered": 11482,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.3,
+   "secs": 163.4,
+   "lost_at": []
+  },
+  "10.10.1.9": {
+   "site": "csr1",
+   "sent": 11381,
+   "delivered": 11381,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 69.6,
+   "secs": 163.4,
+   "lost_at": []
+  },
+  "10.10.2.2": {
+   "site": "csr2",
+   "sent": 11548,
+   "delivered": 11548,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.7,
+   "secs": 163.4,
+   "lost_at": []
+  },
+  "10.10.2.3": {
+   "site": "csr2",
+   "sent": 11424,
+   "delivered": 11424,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 69.9,
+   "secs": 163.4,
+   "lost_at": []
+  },
+  "10.10.2.4": {
+   "site": "csr2",
+   "sent": 11538,
+   "delivered": 11538,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 70.6,
+   "secs": 163.3,
+   "lost_at": []
+  },
+  "10.10.2.5": {
+   "site": "csr2",
+   "sent": 11418,
+   "delivered": 11418,
+   "lost": 0,
+   "gap_lost": 0,
+   "inflight_at_stop": 0,
+   "longest_gap_ms": 0,
+   "pps": 69.9,
+   "secs": 163.3,
+   "lost_at": []
+  }
+ },
+ "steps": [
+  {
+   "step": "csr1 turnup",
+   "rc": 0,
+   "start": 1794350338.5628138,
+   "end": 1794350371.5260055,
+   "secs": 33.0,
+   "why": []
+  },
+  {
+   "step": "csr1 swing",
+   "rc": 0,
+   "start": 1794350389.0413737,
+   "end": 1794350422.314648,
+   "secs": 33.3,
+   "why": []
+  },
+  {
+   "step": "csr1 decom",
+   "rc": 0,
+   "start": 1794350439.890194,
+   "end": 1794350466.4468184,
+   "secs": 26.6,
+   "why": []
+  }
+ ],
+ "circuit_pps": [
+  {
+   "after": "start (baseline)",
+   "t": 1794350338.5626504,
+   "pps": {
+    "csr1 ethernet-1/1.101": 381,
+    "csr1 ethernet-1/1.102": 125,
+    "csr2 ethernet-1/1.201": 256,
+    "csr2 ethernet-1/1.202": 0,
+    "agg-01 ethernet-1/1.101": 193,
+    "agg-01 ethernet-1/1.201": 129,
+    "agg-02 ethernet-1/1.102": 320,
+    "agg-02 ethernet-1/1.202": 128
+   }
+  },
+  {
+   "after": "csr1 turnup (rc=0)",
+   "t": 1794350389.04119,
+   "pps": {
+    "csr1 ethernet-1/1.101": 588,
+    "csr1 ethernet-1/1.102": 194,
+    "csr1 ethernet-1/11.111": 0,
+    "csr1 ethernet-1/11.112": 0,
+    "csr2 ethernet-1/1.201": 256,
+    "csr2 ethernet-1/1.202": 0,
+    "agg-01 ethernet-1/1.101": 194,
+    "agg-01 ethernet-1/1.111": 0,
+    "agg-01 ethernet-1/1.201": 129,
+    "agg-02 ethernet-1/1.102": 318,
+    "agg-02 ethernet-1/1.112": 0,
+    "agg-02 ethernet-1/1.202": 127
+   }
+  },
+  {
+   "after": "csr1 swing (rc=0)",
+   "t": 1794350439.8900216,
+   "pps": {
+    "csr1 ethernet-1/1.101": 0,
+    "csr1 ethernet-1/1.102": 0,
+    "csr1 ethernet-1/11.111": 590,
+    "csr1 ethernet-1/11.112": 195,
+    "csr2 ethernet-1/1.201": 259,
+    "csr2 ethernet-1/1.202": 0,
+    "agg-01 ethernet-1/1.101": 0,
+    "agg-01 ethernet-1/1.111": 295,
+    "agg-01 ethernet-1/1.201": 196,
+    "agg-02 ethernet-1/1.102": 0,
+    "agg-02 ethernet-1/1.112": 486,
+    "agg-02 ethernet-1/1.202": 194
+   }
+  },
+  {
+   "after": "csr1 decom (rc=0)",
+   "t": 1794350484.0662818,
+   "pps": {
+    "csr1 ethernet-1/11.111": 585,
+    "csr1 ethernet-1/11.112": 193,
+    "csr2 ethernet-1/1.201": 258,
+    "csr2 ethernet-1/1.202": 0,
+    "agg-01 ethernet-1/1.111": 195,
+    "agg-01 ethernet-1/1.201": 130,
+    "agg-02 ethernet-1/1.112": 321,
+    "agg-02 ethernet-1/1.202": 127
+   }
+  }
+ ]
+}

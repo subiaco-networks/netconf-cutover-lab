@@ -1,0 +1,1799 @@
+
+===== ansible-playbook -e site=csr1 -e phase=baseline -e apply_change=true -e discard_stale_candidate=true  (rc=0, 12.6s)
+
+PLAY [Site csr1 uplink a+b - baseline] *****************************************
+
+TASK [Check arguments] *********************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Circuit names on this node] **********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Plan] ********************************************************************
+ok: [agg-01] => 
+    msg: |-
+        APPLY site csr1 uplink(s) a phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.101 metric 10'];
+        remove ['ethernet-1/1.111']
+ok: [csr1] => 
+    msg: |-
+        APPLY site csr1 uplink(s) a+b phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.101 metric 10', 'ethernet-1/1.102 metric 10'];
+        remove ['ethernet-1/11.111', 'ethernet-1/1.111', 'ethernet-1/11.112', 'ethernet-1/1.112']
+ok: [agg-02] => 
+    msg: |-
+        APPLY site csr1 uplink(s) b phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.102 metric 10'];
+        remove ['ethernet-1/1.112']
+
+TASK [1. Read IS-IS adjacencies] ***********************************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [1. Adjacencies up before the change] *************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Other VLAN (uplink a) of csr1 must have an IS-IS adjacency up] ********
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Swing needs every new circuit's adjacency up] *************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every new circuit's adjacency up] *************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom: measure what the old circuits carry] ***************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every old circuit idle on every end] **********************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Read running IS-IS config (drain check)] ******************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Rehome-cut needs the circuit drained first] ***************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Pre-checks passed on this node] ***************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Every node must pass its pre-checks before any node locks] ************
+ok: [csr1] => (item=csr1)
+ok: [agg-01] => (item=csr1)
+ok: [csr1] => (item=agg-01)
+ok: [agg-02] => (item=csr1)
+ok: [agg-01] => (item=agg-01)
+ok: [csr1] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-02)
+
+TASK [2. Lock the candidate datastore] *****************************************
+[ERROR]: Task failed: Action failed: b'\n            Error [FailedPrecondition]: Lock denied - candidate has been modified\n        '
+Origin: /home/user/nokia_lab/cutover/ansible/uplink_cutover.yml:210:11
+
+208
+209         # ---------------------------------------------------------------- 2. lock
+210         - name: "2. Lock the candidate datastore"
+              ^ column 11
+
+fatal: [agg-01]: FAILED! => 
+    changed: false
+    msg: 'b''\n            Error [FailedPrecondition]: Lock denied - candidate has been
+        modified\n        '''
+...ignoring
+fatal: [csr1]: FAILED! => 
+    changed: false
+    msg: 'b''\n            Error [FailedPrecondition]: Lock denied - candidate has been
+        modified\n        '''
+...ignoring
+fatal: [agg-02]: FAILED! => 
+    changed: false
+    msg: 'b''\n            Error [FailedPrecondition]: Lock denied - candidate has been
+        modified\n        '''
+...ignoring
+
+TASK [2. Candidate is not clean - refuse] **************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Discard stale candidate changes (requested)] **************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [2. Lock the candidate datastore (retry)] *********************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [2. Locked] ***************************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [3. Edit the candidate (target=candidate, no commit)] *********************
+ok: [agg-01]
+ok: [agg-02]
+ok: [csr1]
+
+TASK [4. <validate> the candidate] *********************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [5. Read running] *********************************************************
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [csr1] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [agg-02] => (item=default)
+ok: [csr1] => (item=ethernet-1/11)
+ok: [agg-01] => (item=default)
+ok: [csr1] => (item=default)
+
+TASK [5. Read candidate] *******************************************************
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [csr1] => (item=ethernet-1/1)
+ok: [agg-02] => (item=default)
+ok: [csr1] => (item=ethernet-1/11)
+ok: [agg-01] => (item=default)
+ok: [csr1] => (item=default)
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr1] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,39 +1,5 @@'
+    - ' <interface xmlns="urn:nokia.com:srlinux:chassis:interfaces" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>ethernet-1/11</name>'
+    - '             <admin-state>enable</admin-state>'
+    - '             <vlan-tagging xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">true</vlan-tagging>'
+    - '-            <subinterface>'
+    - '-                <index>111</index>'
+    - '-                <description>csr1 uplink-a new circuit to agg-01</description>'
+    - '-                <ipv4>'
+    - '-                    <admin-state>enable</admin-state>'
+    - '-                    <address>'
+    - '-                        <ip-prefix>172.20.21.1/31</ip-prefix>'
+    - '-                    </address>'
+    - '-                </ipv4>'
+    - '-                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">'
+    - '-                    <encap>'
+    - '-                        <single-tagged>'
+    - '-                            <vlan-id>111</vlan-id>'
+    - '-                        </single-tagged>'
+    - '-                    </encap>'
+    - '-                </vlan>'
+    - '-            </subinterface>'
+    - '-            <subinterface>'
+    - '-                <index>112</index>'
+    - '-                <description>csr1 uplink-b new circuit to agg-02</description>'
+    - '-                <ipv4>'
+    - '-                    <admin-state>enable</admin-state>'
+    - '-                    <address>'
+    - '-                        <ip-prefix>172.20.22.1/31</ip-prefix>'
+    - '-                    </address>'
+    - '-                </ipv4>'
+    - '-                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">'
+    - '-                    <encap>'
+    - '-                        <single-tagged>'
+    - '-                            <vlan-id>112</vlan-id>'
+    - '-                        </single-tagged>'
+    - '-                    </encap>'
+    - '-                </vlan>'
+    - '-            </subinterface>'
+    - '         </interface>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -5,14 +5,8 @@'
+    - '                 <name>ethernet-1/1.101</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.102</name>'
+    - '-            </interface>'
+    - '-            <interface>'
+    - '-                <name>ethernet-1/11.111</name>'
+    - '-            </interface>'
+    - '-            <interface>'
+    - '-                <name>ethernet-1/11.112</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/3.0</name>'
+    - '             </interface>'
+    - '@@ -52,30 +46,8 @@'
+    - '                                 <metric>10</metric>'
+    - '                             </level>'
+    - '                         </interface>'
+    - '                         <interface>'
+    - '-                            <interface-name>ethernet-1/11.111</interface-name>'
+    - '-                            <circuit-type>point-to-point</circuit-type>'
+    - '-                            <ipv4-unicast>'
+    - '-                                <admin-state>enable</admin-state>'
+    - '-                            </ipv4-unicast>'
+    - '-                            <level>'
+    - '-                                <level-number>2</level-number>'
+    - '-                                <metric>1000</metric>'
+    - '-                            </level>'
+    - '-                        </interface>'
+    - '-                        <interface>'
+    - '-                            <interface-name>ethernet-1/11.112</interface-name>'
+    - '-                            <circuit-type>point-to-point</circuit-type>'
+    - '-                            <ipv4-unicast>'
+    - '-                                <admin-state>enable</admin-state>'
+    - '-                            </ipv4-unicast>'
+    - '-                            <level>'
+    - '-                                <level-number>2</level-number>'
+    - '-                                <metric>1000</metric>'
+    - '-                            </level>'
+    - '-                        </interface>'
+    - '-                        <interface>'
+    - '                             <interface-name>ethernet-1/3.0</interface-name>'
+    - '                             <passive>true</passive>'
+    - '                             <ipv4-unicast>'
+    - '                                 <admin-state>enable</admin-state>'
+ok: [agg-01] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -19,25 +19,8 @@'
+    - '                     </encap>'
+    - '                 </vlan>'
+    - '             </subinterface>'
+    - '             <subinterface>'
+    - '-                <index>111</index>'
+    - '-                <description>csr1 uplink-a new circuit to csr1</description>'
+    - '-                <ipv4>'
+    - '-                    <admin-state>enable</admin-state>'
+    - '-                    <address>'
+    - '-                        <ip-prefix>172.20.21.0/31</ip-prefix>'
+    - '-                    </address>'
+    - '-                </ipv4>'
+    - '-                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">'
+    - '-                    <encap>'
+    - '-                        <single-tagged>'
+    - '-                            <vlan-id>111</vlan-id>'
+    - '-                        </single-tagged>'
+    - '-                    </encap>'
+    - '-                </vlan>'
+    - '-            </subinterface>'
+    - '-            <subinterface>'
+    - '                 <index>201</index>'
+    - '                 <description>csr2 uplink-a old circuit to csr2</description>'
+    - '                 <ipv4>'
+    - '                     <admin-state>enable</admin-state>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -2,11 +2,8 @@'
+    - '             <name>default</name>'
+    - '             <type>default</type>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.101</name>'
+    - '-            </interface>'
+    - '-            <interface>'
+    - '-                <name>ethernet-1/1.111</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.201</name>'
+    - '             </interface>'
+    - '@@ -39,19 +36,8 @@'
+    - '                             </ipv4-unicast>'
+    - '                             <level>'
+    - '                                 <level-number>2</level-number>'
+    - '                                 <metric>10</metric>'
+    - '-                            </level>'
+    - '-                        </interface>'
+    - '-                        <interface>'
+    - '-                            <interface-name>ethernet-1/1.111</interface-name>'
+    - '-                            <circuit-type>point-to-point</circuit-type>'
+    - '-                            <ipv4-unicast>'
+    - '-                                <admin-state>enable</admin-state>'
+    - '-                            </ipv4-unicast>'
+    - '-                            <level>'
+    - '-                                <level-number>2</level-number>'
+    - '-                                <metric>1000</metric>'
+    - '                             </level>'
+    - '                         </interface>'
+    - '                         <interface>'
+    - '                             <interface-name>ethernet-1/1.201</interface-name>'
+ok: [agg-02] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -19,25 +19,8 @@'
+    - '                     </encap>'
+    - '                 </vlan>'
+    - '             </subinterface>'
+    - '             <subinterface>'
+    - '-                <index>112</index>'
+    - '-                <description>csr1 uplink-b new circuit to csr1</description>'
+    - '-                <ipv4>'
+    - '-                    <admin-state>enable</admin-state>'
+    - '-                    <address>'
+    - '-                        <ip-prefix>172.20.22.0/31</ip-prefix>'
+    - '-                    </address>'
+    - '-                </ipv4>'
+    - '-                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">'
+    - '-                    <encap>'
+    - '-                        <single-tagged>'
+    - '-                            <vlan-id>112</vlan-id>'
+    - '-                        </single-tagged>'
+    - '-                    </encap>'
+    - '-                </vlan>'
+    - '-            </subinterface>'
+    - '-            <subinterface>'
+    - '                 <index>202</index>'
+    - '                 <description>csr2 uplink-b old circuit to csr2</description>'
+    - '                 <ipv4>'
+    - '                     <admin-state>enable</admin-state>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -2,11 +2,8 @@'
+    - '             <name>default</name>'
+    - '             <type>default</type>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.102</name>'
+    - '-            </interface>'
+    - '-            <interface>'
+    - '-                <name>ethernet-1/1.112</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.202</name>'
+    - '             </interface>'
+    - '@@ -39,19 +36,8 @@'
+    - '                             </ipv4-unicast>'
+    - '                             <level>'
+    - '                                 <level-number>2</level-number>'
+    - '                                 <metric>10</metric>'
+    - '-                            </level>'
+    - '-                        </interface>'
+    - '-                        <interface>'
+    - '-                            <interface-name>ethernet-1/1.112</interface-name>'
+    - '-                            <circuit-type>point-to-point</circuit-type>'
+    - '-                            <ipv4-unicast>'
+    - '-                                <admin-state>enable</admin-state>'
+    - '-                            </ipv4-unicast>'
+    - '-                            <level>'
+    - '-                                <level-number>2</level-number>'
+    - '-                                <metric>1000</metric>'
+    - '                             </level>'
+    - '                         </interface>'
+    - '                         <interface>'
+    - '                             <interface-name>ethernet-1/1.202</interface-name>'
+
+TASK [6. Discard candidate] ****************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Unlock] ***************************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Dry run complete] *****************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Stop] *****************************************************************
+skipping: [csr1]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-01]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-02]
+
+TASK [7. Persist id for this run] **********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. <commit><confirmed/> confirm-timeout 120s] ****************************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr1]
+
+TASK [7. Committed (pending confirmation)] *************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. CONFIRMED-COMMIT-SENT] ************************************************
+ok: [csr1] => 
+    msg: confirmed commit at 15:20:39.943727; persist-id uplift-csr1-ab-baseline-csr1-1794352839315458652;
+        auto-rollback in 120s unless confirmed
+ok: [agg-01] => 
+    msg: confirmed commit at 15:20:39.952043; persist-id uplift-csr1-a-baseline-agg-01-1794352839320133808;
+        auto-rollback in 120s unless confirmed
+ok: [agg-02] => 
+    msg: confirmed commit at 15:20:39.958035; persist-id uplift-csr1-b-baseline-agg-02-1794352839323054195;
+        auto-rollback in 120s unless confirmed
+
+TASK [7. Pause after commit (test knob)] ***************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Adjacencies that must be up after this phase] *************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [8. Wait for IS-IS adjacency on ethernet-1/1.101, ethernet-1/1.102] *******
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [8. Recheck the other VLAN (uplink a) of csr1] ****************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Traffic check] ********************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Turnup: new circuits idle on every end, old circuits still carrying traffic] ***
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Swing: old circuits idle on every end, new circuits carrying traffic] ***
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Checks passed on this node] *******************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Every node must pass before any node confirms] ************************
+ok: [csr1] => (item=csr1)
+ok: [agg-01] => (item=csr1)
+ok: [csr1] => (item=agg-01)
+ok: [agg-01] => (item=agg-01)
+ok: [agg-02] => (item=csr1)
+ok: [csr1] => (item=agg-02)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-02] => (item=agg-02)
+
+TASK [9. Confirming <commit>] **************************************************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr1]
+
+TASK [9. Confirmed] ************************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [9. Unlock] ***************************************************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [9. Done] *****************************************************************
+ok: [csr1] => 
+    msg: CONFIRMED site csr1 uplink(s) a+b phase baseline at 15:20:42.105947
+ok: [agg-01] => 
+    msg: CONFIRMED site csr1 uplink(s) a phase baseline at 15:20:42.110302
+ok: [agg-02] => 
+    msg: CONFIRMED site csr1 uplink(s) b phase baseline at 15:20:42.114448
+
+PLAY RECAP *********************************************************************
+agg-01                     : ok=29   changed=0    unreachable=0    failed=0    skipped=16   rescued=0    ignored=1   
+agg-02                     : ok=29   changed=0    unreachable=0    failed=0    skipped=16   rescued=0    ignored=1   
+csr1                       : ok=29   changed=0    unreachable=0    failed=0    skipped=16   rescued=0    ignored=1   
+
+
+===== ansible-playbook -e site=csr2 -e phase=baseline -e apply_change=true -e discard_stale_candidate=true  (rc=0, 11.2s)
+
+PLAY [Site csr2 uplink a+b - baseline] *****************************************
+
+TASK [Check arguments] *********************************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Circuit names on this node] **********************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Plan] ********************************************************************
+ok: [csr2] => 
+    msg: |-
+        APPLY site csr2 uplink(s) a+b phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.201 metric 10', 'ethernet-1/1.202 metric 10'];
+        remove ['ethernet-1/11.211', 'ethernet-1/1.211', 'ethernet-1/11.212', 'ethernet-1/1.212']
+ok: [agg-01] => 
+    msg: |-
+        APPLY site csr2 uplink(s) a phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.201 metric 10'];
+        remove ['ethernet-1/1.211']
+ok: [agg-02] => 
+    msg: |-
+        APPLY site csr2 uplink(s) b phase baseline (confirm-timeout 120s): ensure ['ethernet-1/1.202 metric 10'];
+        remove ['ethernet-1/1.212']
+
+TASK [1. Read IS-IS adjacencies] ***********************************************
+ok: [agg-01]
+ok: [csr2]
+ok: [agg-02]
+
+TASK [1. Adjacencies up before the change] *************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Other VLAN (uplink a) of csr2 must have an IS-IS adjacency up] ********
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Swing needs every new circuit's adjacency up] *************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every new circuit's adjacency up] *************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom: measure what the old circuits carry] ***************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every old circuit idle on every end] **********************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Read running IS-IS config (drain check)] ******************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Rehome-cut needs the circuit drained first] ***************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Pre-checks passed on this node] ***************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Every node must pass its pre-checks before any node locks] ************
+ok: [csr2] => (item=csr2)
+ok: [csr2] => (item=agg-01)
+ok: [agg-01] => (item=csr2)
+ok: [agg-02] => (item=csr2)
+ok: [csr2] => (item=agg-02)
+ok: [agg-01] => (item=agg-01)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-02)
+
+TASK [2. Lock the candidate datastore] *****************************************
+ok: [csr2]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [2. Candidate is not clean - refuse] **************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Discard stale candidate changes (requested)] **************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Lock the candidate datastore (retry)] *********************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Locked] ***************************************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [3. Edit the candidate (target=candidate, no commit)] *********************
+ok: [agg-02]
+ok: [csr2]
+ok: [agg-01]
+
+TASK [4. <validate> the candidate] *********************************************
+ok: [agg-02]
+ok: [csr2]
+ok: [agg-01]
+
+TASK [5. Read running] *********************************************************
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [csr2] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [agg-02] => (item=default)
+ok: [csr2] => (item=ethernet-1/11)
+ok: [agg-01] => (item=default)
+ok: [csr2] => (item=default)
+
+TASK [5. Read candidate] *******************************************************
+ok: [csr2] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [csr2] => (item=ethernet-1/11)
+ok: [agg-01] => (item=default)
+ok: [agg-02] => (item=default)
+ok: [csr2] => (item=default)
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr2] => 
+    msg:
+    - (no change - candidate equals running)
+ok: [agg-01] => 
+    msg:
+    - (no change - candidate equals running)
+ok: [agg-02] => 
+    msg:
+    - (no change - candidate equals running)
+
+TASK [6. Discard candidate] ****************************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Unlock] ***************************************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Dry run complete] *****************************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Stop] *****************************************************************
+skipping: [csr2]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-01]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-02]
+
+TASK [7. Persist id for this run] **********************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. <commit><confirmed/> confirm-timeout 120s] ****************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. Committed (pending confirmation)] *************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. CONFIRMED-COMMIT-SENT] ************************************************
+ok: [csr2] => 
+    msg: confirmed commit at 15:20:51.034021; persist-id uplift-csr2-ab-baseline-csr2-1794352850423909490;
+        auto-rollback in 120s unless confirmed
+ok: [agg-01] => 
+    msg: confirmed commit at 15:20:51.040874; persist-id uplift-csr2-a-baseline-agg-01-1794352850429196882;
+        auto-rollback in 120s unless confirmed
+ok: [agg-02] => 
+    msg: confirmed commit at 15:20:51.048462; persist-id uplift-csr2-b-baseline-agg-02-1794352850431870833;
+        auto-rollback in 120s unless confirmed
+
+TASK [7. Pause after commit (test knob)] ***************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Adjacencies that must be up after this phase] *************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Wait for IS-IS adjacency on ethernet-1/1.201, ethernet-1/1.202] *******
+ok: [agg-01]
+ok: [agg-02]
+ok: [csr2]
+
+TASK [8. Recheck the other VLAN (uplink a) of csr2] ****************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Traffic check] ********************************************************
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Turnup: new circuits idle on every end, old circuits still carrying traffic] ***
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Swing: old circuits idle on every end, new circuits carrying traffic] ***
+skipping: [csr2]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Checks passed on this node] *******************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Every node must pass before any node confirms] ************************
+ok: [csr2] => (item=csr2)
+ok: [agg-01] => (item=csr2)
+ok: [csr2] => (item=agg-01)
+ok: [agg-02] => (item=csr2)
+ok: [agg-01] => (item=agg-01)
+ok: [csr2] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-02)
+
+TASK [9. Confirming <commit>] **************************************************
+ok: [agg-02]
+ok: [csr2]
+ok: [agg-01]
+
+TASK [9. Confirmed] ************************************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [9. Unlock] ***************************************************************
+ok: [csr2]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [9. Done] *****************************************************************
+ok: [csr2] => 
+    msg: CONFIRMED site csr2 uplink(s) a+b phase baseline at 15:20:53.264148
+ok: [agg-01] => 
+    msg: CONFIRMED site csr2 uplink(s) a phase baseline at 15:20:53.267445
+ok: [agg-02] => 
+    msg: CONFIRMED site csr2 uplink(s) b phase baseline at 15:20:53.272558
+
+PLAY RECAP *********************************************************************
+agg-01                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+agg-02                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+csr2                       : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+
+
+===== ansible-playbook -e site=csr1 -e phase=decom -e apply_change=true -e skip_decom_checks=true  (rc=0, 11.4s)
+
+PLAY [Site csr1 uplink a+b - decom] ********************************************
+
+TASK [Check arguments] *********************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Circuit names on this node] **********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Plan] ********************************************************************
+ok: [agg-01] => 
+    msg: |-
+        APPLY site csr1 uplink(s) a phase decom (confirm-timeout 120s): ensure [];
+        remove ['ethernet-1/1.101']
+ok: [csr1] => 
+    msg: |-
+        APPLY site csr1 uplink(s) a+b phase decom (confirm-timeout 120s): ensure [];
+        remove ['ethernet-1/1.101', 'ethernet-1/1.102']
+ok: [agg-02] => 
+    msg: |-
+        APPLY site csr1 uplink(s) b phase decom (confirm-timeout 120s): ensure [];
+        remove ['ethernet-1/1.102']
+
+TASK [1. Read IS-IS adjacencies] ***********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Adjacencies up before the change] *************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Other VLAN (uplink a) of csr1 must have an IS-IS adjacency up] ********
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Swing needs every new circuit's adjacency up] *************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every new circuit's adjacency up] *************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom: measure what the old circuits carry] ***************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every old circuit idle on every end] **********************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Read running IS-IS config (drain check)] ******************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Rehome-cut needs the circuit drained first] ***************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Pre-checks passed on this node] ***************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Every node must pass its pre-checks before any node locks] ************
+ok: [csr1] => (item=csr1)
+ok: [agg-01] => (item=csr1)
+ok: [csr1] => (item=agg-01)
+ok: [agg-01] => (item=agg-01)
+ok: [agg-02] => (item=csr1)
+ok: [csr1] => (item=agg-02)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-02] => (item=agg-02)
+
+TASK [2. Lock the candidate datastore] *****************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [2. Candidate is not clean - refuse] **************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Discard stale candidate changes (requested)] **************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Lock the candidate datastore (retry)] *********************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Locked] ***************************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [3. Edit the candidate (target=candidate, no commit)] *********************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [4. <validate> the candidate] *********************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [5. Read running] *********************************************************
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [csr1] => (item=ethernet-1/1)
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [agg-01] => (item=default)
+ok: [csr1] => (item=ethernet-1/11)
+ok: [agg-02] => (item=default)
+ok: [csr1] => (item=default)
+
+TASK [5. Read candidate] *******************************************************
+ok: [csr1] => (item=ethernet-1/1)
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [agg-02] => (item=default)
+ok: [agg-01] => (item=default)
+ok: [csr1] => (item=ethernet-1/11)
+ok: [csr1] => (item=default)
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr1] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,39 +1,5 @@'
+    - ' <interface xmlns="urn:nokia.com:srlinux:chassis:interfaces" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>ethernet-1/1</name>'
+    - '             <admin-state>enable</admin-state>'
+    - '             <vlan-tagging xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">true</vlan-tagging>'
+    - '-            <subinterface>'
+    - '-                <index>101</index>'
+    - '-                <description>csr1 uplink-a old circuit to agg-01</description>'
+    - '-                <ipv4>'
+    - '-                    <admin-state>enable</admin-state>'
+    - '-                    <address>'
+    - '-                        <ip-prefix>172.20.1.1/31</ip-prefix>'
+    - '-                    </address>'
+    - '-                </ipv4>'
+    - '-                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">'
+    - '-                    <encap>'
+    - '-                        <single-tagged>'
+    - '-                            <vlan-id>101</vlan-id>'
+    - '-                        </single-tagged>'
+    - '-                    </encap>'
+    - '-                </vlan>'
+    - '-            </subinterface>'
+    - '-            <subinterface>'
+    - '-                <index>102</index>'
+    - '-                <description>csr1 uplink-b old circuit to agg-02</description>'
+    - '-                <ipv4>'
+    - '-                    <admin-state>enable</admin-state>'
+    - '-                    <address>'
+    - '-                        <ip-prefix>172.20.2.1/31</ip-prefix>'
+    - '-                    </address>'
+    - '-                </ipv4>'
+    - '-                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">'
+    - '-                    <encap>'
+    - '-                        <single-tagged>'
+    - '-                            <vlan-id>102</vlan-id>'
+    - '-                        </single-tagged>'
+    - '-                    </encap>'
+    - '-                </vlan>'
+    - '-            </subinterface>'
+    - '         </interface>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,13 +1,7 @@'
+    - ' <network-instance xmlns="urn:nokia.com:srlinux:net-inst:network-instance" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>default</name>'
+    - '             <type>default</type>'
+    - '-            <interface>'
+    - '-                <name>ethernet-1/1.101</name>'
+    - '-            </interface>'
+    - '-            <interface>'
+    - '-                <name>ethernet-1/1.102</name>'
+    - '-            </interface>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/3.0</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '@@ -23,30 +17,8 @@'
+    - '                         <net>49.0001.0100.0000.0001.00</net>'
+    - '                         <ipv4-unicast>'
+    - '                             <admin-state>enable</admin-state>'
+    - '                         </ipv4-unicast>'
+    - '-                        <interface>'
+    - '-                            <interface-name>ethernet-1/1.101</interface-name>'
+    - '-                            <circuit-type>point-to-point</circuit-type>'
+    - '-                            <ipv4-unicast>'
+    - '-                                <admin-state>enable</admin-state>'
+    - '-                            </ipv4-unicast>'
+    - '-                            <level>'
+    - '-                                <level-number>2</level-number>'
+    - '-                                <metric>10</metric>'
+    - '-                            </level>'
+    - '-                        </interface>'
+    - '-                        <interface>'
+    - '-                            <interface-name>ethernet-1/1.102</interface-name>'
+    - '-                            <circuit-type>point-to-point</circuit-type>'
+    - '-                            <ipv4-unicast>'
+    - '-                                <admin-state>enable</admin-state>'
+    - '-                            </ipv4-unicast>'
+    - '-                            <level>'
+    - '-                                <level-number>2</level-number>'
+    - '-                                <metric>10</metric>'
+    - '-                            </level>'
+    - '-                        </interface>'
+    - '                         <interface>'
+    - '                             <interface-name>ethernet-1/3.0</interface-name>'
+    - '                             <passive>true</passive>'
+    - '                             <ipv4-unicast>'
+ok: [agg-01] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,25 +1,8 @@'
+    - ' <interface xmlns="urn:nokia.com:srlinux:chassis:interfaces" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>ethernet-1/1</name>'
+    - '             <admin-state>enable</admin-state>'
+    - '             <vlan-tagging xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">true</vlan-tagging>'
+    - '-            <subinterface>'
+    - '-                <index>101</index>'
+    - '-                <description>csr1 uplink-a old circuit to csr1</description>'
+    - '-                <ipv4>'
+    - '-                    <admin-state>enable</admin-state>'
+    - '-                    <address>'
+    - '-                        <ip-prefix>172.20.1.0/31</ip-prefix>'
+    - '-                    </address>'
+    - '-                </ipv4>'
+    - '-                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">'
+    - '-                    <encap>'
+    - '-                        <single-tagged>'
+    - '-                            <vlan-id>101</vlan-id>'
+    - '-                        </single-tagged>'
+    - '-                    </encap>'
+    - '-                </vlan>'
+    - '-            </subinterface>'
+    - '             <subinterface>'
+    - '                 <index>201</index>'
+    - '                 <description>csr2 uplink-a old circuit to csr2</description>'
+    - '                 <ipv4>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,10 +1,7 @@'
+    - ' <network-instance xmlns="urn:nokia.com:srlinux:net-inst:network-instance" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>default</name>'
+    - '             <type>default</type>'
+    - '-            <interface>'
+    - '-                <name>ethernet-1/1.101</name>'
+    - '-            </interface>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.201</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '@@ -27,19 +24,8 @@'
+    - '                         <net>49.0001.0100.0000.0011.00</net>'
+    - '                         <ipv4-unicast>'
+    - '                             <admin-state>enable</admin-state>'
+    - '                         </ipv4-unicast>'
+    - '-                        <interface>'
+    - '-                            <interface-name>ethernet-1/1.101</interface-name>'
+    - '-                            <circuit-type>point-to-point</circuit-type>'
+    - '-                            <ipv4-unicast>'
+    - '-                                <admin-state>enable</admin-state>'
+    - '-                            </ipv4-unicast>'
+    - '-                            <level>'
+    - '-                                <level-number>2</level-number>'
+    - '-                                <metric>10</metric>'
+    - '-                            </level>'
+    - '-                        </interface>'
+    - '                         <interface>'
+    - '                             <interface-name>ethernet-1/1.201</interface-name>'
+    - '                             <circuit-type>point-to-point</circuit-type>'
+    - '                             <ipv4-unicast>'
+ok: [agg-02] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,25 +1,8 @@'
+    - ' <interface xmlns="urn:nokia.com:srlinux:chassis:interfaces" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>ethernet-1/1</name>'
+    - '             <admin-state>enable</admin-state>'
+    - '             <vlan-tagging xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">true</vlan-tagging>'
+    - '-            <subinterface>'
+    - '-                <index>102</index>'
+    - '-                <description>csr1 uplink-b old circuit to csr1</description>'
+    - '-                <ipv4>'
+    - '-                    <admin-state>enable</admin-state>'
+    - '-                    <address>'
+    - '-                        <ip-prefix>172.20.2.0/31</ip-prefix>'
+    - '-                    </address>'
+    - '-                </ipv4>'
+    - '-                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">'
+    - '-                    <encap>'
+    - '-                        <single-tagged>'
+    - '-                            <vlan-id>102</vlan-id>'
+    - '-                        </single-tagged>'
+    - '-                    </encap>'
+    - '-                </vlan>'
+    - '-            </subinterface>'
+    - '             <subinterface>'
+    - '                 <index>202</index>'
+    - '                 <description>csr2 uplink-b old circuit to csr2</description>'
+    - '                 <ipv4>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,10 +1,7 @@'
+    - ' <network-instance xmlns="urn:nokia.com:srlinux:net-inst:network-instance" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>default</name>'
+    - '             <type>default</type>'
+    - '-            <interface>'
+    - '-                <name>ethernet-1/1.102</name>'
+    - '-            </interface>'
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.202</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '@@ -27,19 +24,8 @@'
+    - '                         <net>49.0001.0100.0000.0012.00</net>'
+    - '                         <ipv4-unicast>'
+    - '                             <admin-state>enable</admin-state>'
+    - '                         </ipv4-unicast>'
+    - '-                        <interface>'
+    - '-                            <interface-name>ethernet-1/1.102</interface-name>'
+    - '-                            <circuit-type>point-to-point</circuit-type>'
+    - '-                            <ipv4-unicast>'
+    - '-                                <admin-state>enable</admin-state>'
+    - '-                            </ipv4-unicast>'
+    - '-                            <level>'
+    - '-                                <level-number>2</level-number>'
+    - '-                                <metric>10</metric>'
+    - '-                            </level>'
+    - '-                        </interface>'
+    - '                         <interface>'
+    - '                             <interface-name>ethernet-1/1.202</interface-name>'
+    - '                             <circuit-type>point-to-point</circuit-type>'
+    - '                             <ipv4-unicast>'
+
+TASK [6. Discard candidate] ****************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Unlock] ***************************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Dry run complete] *****************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Stop] *****************************************************************
+skipping: [csr1]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-01]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-02]
+
+TASK [7. Persist id for this run] **********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. <commit><confirmed/> confirm-timeout 120s] ****************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [7. Committed (pending confirmation)] *************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. CONFIRMED-COMMIT-SENT] ************************************************
+ok: [csr1] => 
+    msg: confirmed commit at 15:21:34.017340; persist-id uplift-csr1-ab-decom-csr1-1794352893368319257;
+        auto-rollback in 120s unless confirmed
+ok: [agg-01] => 
+    msg: confirmed commit at 15:21:34.020924; persist-id uplift-csr1-a-decom-agg-01-1794352893374792966;
+        auto-rollback in 120s unless confirmed
+ok: [agg-02] => 
+    msg: confirmed commit at 15:21:34.025429; persist-id uplift-csr1-b-decom-agg-02-1794352893377818997;
+        auto-rollback in 120s unless confirmed
+
+TASK [7. Pause after commit (test knob)] ***************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Adjacencies that must be up after this phase] *************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Wait for IS-IS adjacency on] ******************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [8. Recheck the other VLAN (uplink a) of csr1] ****************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Traffic check] ********************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Turnup: new circuits idle on every end, old circuits still carrying traffic] ***
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Swing: old circuits idle on every end, new circuits carrying traffic] ***
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Checks passed on this node] *******************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Every node must pass before any node confirms] ************************
+ok: [csr1] => (item=csr1)
+ok: [agg-01] => (item=csr1)
+ok: [csr1] => (item=agg-01)
+ok: [agg-01] => (item=agg-01)
+ok: [agg-02] => (item=csr1)
+ok: [csr1] => (item=agg-02)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-02] => (item=agg-02)
+
+TASK [9. Confirming <commit>] **************************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [9. Confirmed] ************************************************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [9. Unlock] ***************************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [9. Done] *****************************************************************
+ok: [csr1] => 
+    msg: CONFIRMED site csr1 uplink(s) a+b phase decom at 15:21:36.245942
+ok: [agg-01] => 
+    msg: CONFIRMED site csr1 uplink(s) a phase decom at 15:21:36.249991
+ok: [agg-02] => 
+    msg: CONFIRMED site csr1 uplink(s) b phase decom at 15:21:36.253793
+
+PLAY RECAP *********************************************************************
+agg-01                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+agg-02                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+csr1                       : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+
+
+===== ansible-playbook -e site=csr1 -e phase=turnup -e apply_change=true -e turnup_metric=normal  (rc=0, 12.0s)
+
+PLAY [Site csr1 uplink a+b - turnup] *******************************************
+
+TASK [Check arguments] *********************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [Circuit names on this node] **********************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [Plan] ********************************************************************
+ok: [agg-01] => 
+    msg: |-
+        APPLY site csr1 uplink(s) a phase turnup (confirm-timeout 120s): ensure ['ethernet-1/1.111 metric 10'];
+        remove []
+ok: [csr1] => 
+    msg: |-
+        APPLY site csr1 uplink(s) a+b phase turnup (confirm-timeout 120s): ensure ['ethernet-1/11.111 metric 10', 'ethernet-1/11.112 metric 10'];
+        remove []
+ok: [agg-02] => 
+    msg: |-
+        APPLY site csr1 uplink(s) b phase turnup (confirm-timeout 120s): ensure ['ethernet-1/1.112 metric 10'];
+        remove []
+
+TASK [1. Read IS-IS adjacencies] ***********************************************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr1]
+
+TASK [1. Adjacencies up before the change] *************************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [1. Other VLAN (uplink a) of csr1 must have an IS-IS adjacency up] ********
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Swing needs every new circuit's adjacency up] *************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every new circuit's adjacency up] *************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom: measure what the old circuits carry] ***************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Decom needs every old circuit idle on every end] **********************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Read running IS-IS config (drain check)] ******************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Rehome-cut needs the circuit drained first] ***************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [1. Pre-checks passed on this node] ***************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [1. Every node must pass its pre-checks before any node locks] ************
+ok: [csr1] => (item=csr1)
+ok: [agg-01] => (item=csr1)
+ok: [csr1] => (item=agg-01)
+ok: [agg-02] => (item=csr1)
+ok: [csr1] => (item=agg-02)
+ok: [agg-01] => (item=agg-01)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-02)
+
+TASK [2. Lock the candidate datastore] *****************************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [2. Candidate is not clean - refuse] **************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Discard stale candidate changes (requested)] **************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Lock the candidate datastore (retry)] *********************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [2. Locked] ***************************************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [3. Edit the candidate (target=candidate, no commit)] *********************
+ok: [agg-02]
+ok: [agg-01]
+ok: [csr1]
+
+TASK [4. <validate> the candidate] *********************************************
+ok: [agg-02]
+ok: [csr1]
+ok: [agg-01]
+
+TASK [5. Read running] *********************************************************
+ok: [csr1] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [csr1] => (item=ethernet-1/11)
+ok: [agg-01] => (item=default)
+ok: [agg-02] => (item=default)
+ok: [csr1] => (item=default)
+
+TASK [5. Read candidate] *******************************************************
+ok: [csr1] => (item=ethernet-1/1)
+ok: [agg-02] => (item=ethernet-1/1)
+ok: [agg-01] => (item=ethernet-1/1)
+ok: [agg-01] => (item=default)
+ok: [csr1] => (item=ethernet-1/11)
+ok: [agg-02] => (item=default)
+ok: [csr1] => (item=default)
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [5. Diff running -> candidate] ********************************************
+ok: [csr1] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,5 +1,39 @@'
+    - ' <interface xmlns="urn:nokia.com:srlinux:chassis:interfaces" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>ethernet-1/11</name>'
+    - '             <admin-state>enable</admin-state>'
+    - '             <vlan-tagging xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">true</vlan-tagging>'
+    - +            <subinterface>
+    - +                <index>111</index>
+    - +                <description>csr1 uplink-a new circuit to agg-01</description>
+    - +                <ipv4>
+    - +                    <admin-state>enable</admin-state>
+    - +                    <address>
+    - +                        <ip-prefix>172.20.21.1/31</ip-prefix>
+    - +                    </address>
+    - +                </ipv4>
+    - +                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">
+    - +                    <encap>
+    - +                        <single-tagged>
+    - +                            <vlan-id>111</vlan-id>
+    - +                        </single-tagged>
+    - +                    </encap>
+    - +                </vlan>
+    - +            </subinterface>
+    - +            <subinterface>
+    - +                <index>112</index>
+    - +                <description>csr1 uplink-b new circuit to agg-02</description>
+    - +                <ipv4>
+    - +                    <admin-state>enable</admin-state>
+    - +                    <address>
+    - +                        <ip-prefix>172.20.22.1/31</ip-prefix>
+    - +                    </address>
+    - +                </ipv4>
+    - +                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">
+    - +                    <encap>
+    - +                        <single-tagged>
+    - +                            <vlan-id>112</vlan-id>
+    - +                        </single-tagged>
+    - +                    </encap>
+    - +                </vlan>
+    - +            </subinterface>
+    - '         </interface>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,7 +1,13 @@'
+    - ' <network-instance xmlns="urn:nokia.com:srlinux:net-inst:network-instance" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>default</name>'
+    - '             <type>default</type>'
+    - +            <interface>
+    - +                <name>ethernet-1/11.111</name>
+    - +            </interface>
+    - +            <interface>
+    - +                <name>ethernet-1/11.112</name>
+    - +            </interface>
+    - '             <interface>'
+    - '                 <name>ethernet-1/3.0</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '@@ -17,8 +23,30 @@'
+    - '                         <net>49.0001.0100.0000.0001.00</net>'
+    - '                         <ipv4-unicast>'
+    - '                             <admin-state>enable</admin-state>'
+    - '                         </ipv4-unicast>'
+    - +                        <interface>
+    - +                            <interface-name>ethernet-1/11.111</interface-name>
+    - +                            <circuit-type>point-to-point</circuit-type>
+    - +                            <ipv4-unicast>
+    - +                                <admin-state>enable</admin-state>
+    - +                            </ipv4-unicast>
+    - +                            <level>
+    - +                                <level-number>2</level-number>
+    - +                                <metric>10</metric>
+    - +                            </level>
+    - +                        </interface>
+    - +                        <interface>
+    - +                            <interface-name>ethernet-1/11.112</interface-name>
+    - +                            <circuit-type>point-to-point</circuit-type>
+    - +                            <ipv4-unicast>
+    - +                                <admin-state>enable</admin-state>
+    - +                            </ipv4-unicast>
+    - +                            <level>
+    - +                                <level-number>2</level-number>
+    - +                                <metric>10</metric>
+    - +                            </level>
+    - +                        </interface>
+    - '                         <interface>'
+    - '                             <interface-name>ethernet-1/3.0</interface-name>'
+    - '                             <passive>true</passive>'
+    - '                             <ipv4-unicast>'
+ok: [agg-01] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,8 +1,25 @@'
+    - ' <interface xmlns="urn:nokia.com:srlinux:chassis:interfaces" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>ethernet-1/1</name>'
+    - '             <admin-state>enable</admin-state>'
+    - '             <vlan-tagging xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">true</vlan-tagging>'
+    - +            <subinterface>
+    - +                <index>111</index>
+    - +                <description>csr1 uplink-a new circuit to csr1</description>
+    - +                <ipv4>
+    - +                    <admin-state>enable</admin-state>
+    - +                    <address>
+    - +                        <ip-prefix>172.20.21.0/31</ip-prefix>
+    - +                    </address>
+    - +                </ipv4>
+    - +                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">
+    - +                    <encap>
+    - +                        <single-tagged>
+    - +                            <vlan-id>111</vlan-id>
+    - +                        </single-tagged>
+    - +                    </encap>
+    - +                </vlan>
+    - +            </subinterface>
+    - '             <subinterface>'
+    - '                 <index>201</index>'
+    - '                 <description>csr2 uplink-a old circuit to csr2</description>'
+    - '                 <ipv4>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,7 +1,10 @@'
+    - ' <network-instance xmlns="urn:nokia.com:srlinux:net-inst:network-instance" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>default</name>'
+    - '             <type>default</type>'
+    - +            <interface>
+    - +                <name>ethernet-1/1.111</name>
+    - +            </interface>
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.201</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '@@ -24,8 +27,19 @@'
+    - '                         <net>49.0001.0100.0000.0011.00</net>'
+    - '                         <ipv4-unicast>'
+    - '                             <admin-state>enable</admin-state>'
+    - '                         </ipv4-unicast>'
+    - +                        <interface>
+    - +                            <interface-name>ethernet-1/1.111</interface-name>
+    - +                            <circuit-type>point-to-point</circuit-type>
+    - +                            <ipv4-unicast>
+    - +                                <admin-state>enable</admin-state>
+    - +                            </ipv4-unicast>
+    - +                            <level>
+    - +                                <level-number>2</level-number>
+    - +                                <metric>10</metric>
+    - +                            </level>
+    - +                        </interface>
+    - '                         <interface>'
+    - '                             <interface-name>ethernet-1/1.201</interface-name>'
+    - '                             <circuit-type>point-to-point</circuit-type>'
+    - '                             <ipv4-unicast>'
+ok: [agg-02] => 
+    msg:
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,8 +1,25 @@'
+    - ' <interface xmlns="urn:nokia.com:srlinux:chassis:interfaces" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>ethernet-1/1</name>'
+    - '             <admin-state>enable</admin-state>'
+    - '             <vlan-tagging xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">true</vlan-tagging>'
+    - +            <subinterface>
+    - +                <index>112</index>
+    - +                <description>csr1 uplink-b new circuit to csr1</description>
+    - +                <ipv4>
+    - +                    <admin-state>enable</admin-state>
+    - +                    <address>
+    - +                        <ip-prefix>172.20.22.0/31</ip-prefix>
+    - +                    </address>
+    - +                </ipv4>
+    - +                <vlan xmlns="urn:nokia.com:srlinux:chassis:interfaces-vlans">
+    - +                    <encap>
+    - +                        <single-tagged>
+    - +                            <vlan-id>112</vlan-id>
+    - +                        </single-tagged>
+    - +                    </encap>
+    - +                </vlan>
+    - +            </subinterface>
+    - '             <subinterface>'
+    - '                 <index>202</index>'
+    - '                 <description>csr2 uplink-b old circuit to csr2</description>'
+    - '                 <ipv4>'
+    - '--- running'
+    - +++ candidate
+    - '@@ -1,7 +1,10 @@'
+    - ' <network-instance xmlns="urn:nokia.com:srlinux:net-inst:network-instance" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+    - '             <name>default</name>'
+    - '             <type>default</type>'
+    - +            <interface>
+    - +                <name>ethernet-1/1.112</name>
+    - +            </interface>
+    - '             <interface>'
+    - '                 <name>ethernet-1/1.202</name>'
+    - '             </interface>'
+    - '             <interface>'
+    - '@@ -24,8 +27,19 @@'
+    - '                         <net>49.0001.0100.0000.0012.00</net>'
+    - '                         <ipv4-unicast>'
+    - '                             <admin-state>enable</admin-state>'
+    - '                         </ipv4-unicast>'
+    - +                        <interface>
+    - +                            <interface-name>ethernet-1/1.112</interface-name>
+    - +                            <circuit-type>point-to-point</circuit-type>
+    - +                            <ipv4-unicast>
+    - +                                <admin-state>enable</admin-state>
+    - +                            </ipv4-unicast>
+    - +                            <level>
+    - +                                <level-number>2</level-number>
+    - +                                <metric>10</metric>
+    - +                            </level>
+    - +                        </interface>
+    - '                         <interface>'
+    - '                             <interface-name>ethernet-1/1.202</interface-name>'
+    - '                             <circuit-type>point-to-point</circuit-type>'
+    - '                             <ipv4-unicast>'
+
+TASK [6. Discard candidate] ****************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Unlock] ***************************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Dry run complete] *****************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [6. Stop] *****************************************************************
+skipping: [csr1]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-01]
+
+TASK [6. Stop] *****************************************************************
+skipping: [agg-02]
+
+TASK [7. Persist id for this run] **********************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [7. <commit><confirmed/> confirm-timeout 120s] ****************************
+ok: [agg-01]
+ok: [agg-02]
+ok: [csr1]
+
+TASK [7. Committed (pending confirmation)] *************************************
+ok: [agg-01]
+ok: [csr1]
+ok: [agg-02]
+
+TASK [7. CONFIRMED-COMMIT-SENT] ************************************************
+ok: [csr1] => 
+    msg: confirmed commit at 15:21:45.897138; persist-id uplift-csr1-ab-turnup-csr1-1794352905256892231;
+        auto-rollback in 120s unless confirmed
+ok: [agg-01] => 
+    msg: confirmed commit at 15:21:45.904004; persist-id uplift-csr1-a-turnup-agg-01-1794352905261912557;
+        auto-rollback in 120s unless confirmed
+ok: [agg-02] => 
+    msg: confirmed commit at 15:21:45.908127; persist-id uplift-csr1-b-turnup-agg-02-1794352905266929366;
+        auto-rollback in 120s unless confirmed
+
+TASK [7. Pause after commit (test knob)] ***************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Adjacencies that must be up after this phase] *************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Wait for IS-IS adjacency on ethernet-1/11.111, ethernet-1/11.112] *****
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Recheck the other VLAN (uplink a) of csr1] ****************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Traffic check] ********************************************************
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Turnup: new circuits idle on every end, old circuits still carrying traffic] ***
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Swing: old circuits idle on every end, new circuits carrying traffic] ***
+skipping: [csr1]
+skipping: [agg-01]
+skipping: [agg-02]
+
+TASK [8. Checks passed on this node] *******************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [8. Every node must pass before any node confirms] ************************
+ok: [csr1] => (item=csr1)
+ok: [agg-01] => (item=csr1)
+ok: [csr1] => (item=agg-01)
+ok: [agg-02] => (item=csr1)
+ok: [csr1] => (item=agg-02)
+ok: [agg-01] => (item=agg-01)
+ok: [agg-02] => (item=agg-01)
+ok: [agg-01] => (item=agg-02)
+ok: [agg-02] => (item=agg-02)
+
+TASK [9. Confirming <commit>] **************************************************
+ok: [agg-01]
+ok: [agg-02]
+ok: [csr1]
+
+TASK [9. Confirmed] ************************************************************
+ok: [csr1]
+ok: [agg-01]
+ok: [agg-02]
+
+TASK [9. Unlock] ***************************************************************
+ok: [csr1]
+ok: [agg-02]
+ok: [agg-01]
+
+TASK [9. Done] *****************************************************************
+ok: [agg-01] => 
+    msg: CONFIRMED site csr1 uplink(s) a phase turnup at 15:21:48.261681
+ok: [csr1] => 
+    msg: CONFIRMED site csr1 uplink(s) a+b phase turnup at 15:21:48.259514
+ok: [agg-02] => 
+    msg: CONFIRMED site csr1 uplink(s) b phase turnup at 15:21:48.269446
+
+PLAY RECAP *********************************************************************
+agg-01                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+agg-02                     : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+csr1                       : ok=27   changed=0    unreachable=0    failed=0    skipped=18   rescued=0    ignored=0   
+

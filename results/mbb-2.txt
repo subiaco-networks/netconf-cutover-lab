@@ -1,0 +1,46 @@
+# mbb-2
+run at 2026-11-10 14:51:35 PST
+csr1 (site being changed): sent 83,378, delivered 83,378 (lost 0)  [8 flows, ping -i 0.01]
+csr2 (bystander site, same MTSO fibers): sent 41,537, delivered 41,537 (lost 0)  [4 flows, ping -i 0.01]
+lost = sent - delivered; packets still in flight when ping was stopped are not counted as sent
+
+## steps (lost packets placed in each step's time window: csr1 / csr2)
+  csr1 turnup                                                    rc=0     32.7s  lost 0 / 0
+  csr1 swing                                                     rc=0     32.8s  lost 0 / 0
+  csr1 decom                                                     rc=0     26.0s  lost 0 / 0
+
+## out-pps per uplink subinterface after each step (evidence of which circuit carries traffic)
+   VLAN 101/102 csr1 old, 111/112 csr1 new, 201/202 csr2 old, 211/212 csr2 new
+  after start (baseline):
+     agg-01 e1/1.101= 193  csr1 e1/1.101= 385  agg-02 e1/1.102= 319  csr1 e1/1.102= 128
+     agg-01 e1/1.201= 128  csr2 e1/1.201= 257  agg-02 e1/1.202= 127  csr2 e1/1.202=   0
+  after csr1 turnup (rc=0):
+     agg-01 e1/1.101= 147  csr1 e1/1.101= 295  agg-02 e1/1.102= 246  csr1 e1/1.102=  99
+     agg-01 e1/1.111=   0  csr1 e1/11.111=   0  agg-02 e1/1.112=   0  csr1 e1/11.112=   0
+     agg-01 e1/1.201=  98  csr2 e1/1.201= 196  agg-02 e1/1.202=  97  csr2 e1/1.202=   0
+  after csr1 swing (rc=0):
+     agg-01 e1/1.101=   0  csr1 e1/1.101=   0  agg-02 e1/1.102=   0  csr1 e1/1.102=   0
+     agg-01 e1/1.111= 147  csr1 e1/11.111= 292  agg-02 e1/1.112= 243  csr1 e1/11.112=  97
+     agg-01 e1/1.201=  98  csr2 e1/1.201= 196  agg-02 e1/1.202=  97  csr2 e1/1.202=   0
+  after csr1 decom (rc=0):
+     agg-01 e1/1.111= 195  csr1 e1/11.111= 387  agg-02 e1/1.112= 322  csr1 e1/11.112= 129
+     agg-01 e1/1.201= 130  csr2 e1/1.201= 260  agg-02 e1/1.202= 128  csr2 e1/1.202=   0
+
+## flows
+  csr1 10.10.1.2 -> 10.20.1.2: sent 10468, delivered 10468 (lost 0), longest gap 0 ms, 64.5 pps over 162.3 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-a]
+  csr1 10.10.1.3 -> 10.20.1.2: sent 10464, delivered 10464 (lost 0), longest gap 0 ms, 64.5 pps over 162.2 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-a]
+  csr1 10.10.1.4 -> 10.20.1.2: sent 10416, delivered 10416 (lost 0), longest gap 0 ms, 64.2 pps over 162.2 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.5 -> 10.20.1.2: sent 10418, delivered 10418 (lost 0), longest gap 0 ms, 64.3 pps over 162.1 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.6 -> 10.20.1.2: sent 10419, delivered 10419 (lost 0), longest gap 0 ms, 64.3 pps over 162.1 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.7 -> 10.20.1.2: sent 10415, delivered 10415 (lost 0), longest gap 0 ms, 64.3 pps over 162.1 s, 0 in flight at stop  [fwd via uplink-a, return via uplink-b]
+  csr1 10.10.1.8 -> 10.20.1.2: sent 10426, delivered 10426 (lost 0), longest gap 0 ms, 64.3 pps over 162.0 s, 0 in flight at stop  [fwd via uplink-b, return via uplink-a]
+  csr1 10.10.1.9 -> 10.20.1.2: sent 10352, delivered 10352 (lost 0), longest gap 0 ms, 63.9 pps over 162.0 s, 0 in flight at stop  [fwd via uplink-b, return via uplink-b]
+  csr2 10.10.2.2 -> 10.20.1.2: sent 10435, delivered 10435 (lost 0), longest gap 0 ms, 64.4 pps over 162.0 s, 0 in flight at stop
+  csr2 10.10.2.3 -> 10.20.1.2: sent 10341, delivered 10341 (lost 0), longest gap 0 ms, 63.9 pps over 162.0 s, 0 in flight at stop
+  csr2 10.10.2.4 -> 10.20.1.2: sent 10403, delivered 10403 (lost 0), longest gap 0 ms, 64.2 pps over 161.9 s, 0 in flight at stop
+  csr2 10.10.2.5 -> 10.20.1.2: sent 10358, delivered 10358 (lost 0), longest gap 0 ms, 64.0 pps over 161.9 s, 0 in flight at stop
+
+make-before-break on csr1: turnup -> swing -> decom
+final csr1 adjacencies: [('ethernet-1/11.111', 'up'), ('ethernet-1/11.112', 'up')]
+final csr1 IS-IS metrics: {'ethernet-1/11.111': '10', 'ethernet-1/11.112': '10'}
+final csr2 adjacencies: [('ethernet-1/1.201', 'up'), ('ethernet-1/1.202', 'up')]
